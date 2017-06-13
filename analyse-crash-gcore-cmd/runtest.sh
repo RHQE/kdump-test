@@ -88,7 +88,7 @@ EOF
     report_file gdb.log
 
 
-    rm -f *.log
+    rm -f gdb.log "${gcore_log}"
     rm -f *.cmd
     ready_to_exit
 }

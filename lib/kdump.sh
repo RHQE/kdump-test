@@ -315,7 +315,8 @@ kdump_restart()
     log_info "- Restart kdump service."
 
     # delete initrd*kdump.img and update timestamp of kdump.conf
-    rm -f /boot/initrd-*kdump.img || rm -f /boot/initramfs-*kdump.img
+    rm -f /boot/initrd-*kdump.img
+    rm -f /boot/initramfs-*kdump.img  # for rhel7
     touch "${K_CONFIG}"
 
     /usr/bin/kdumpctl restart 2>&1 || /sbin/service kdump restart 2>&1 || log_fatal_error "- Failed to start kdump!"

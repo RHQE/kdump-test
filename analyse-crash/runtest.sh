@@ -85,10 +85,24 @@ EOF
     # must have either the "no_irq_chip" or the "nr_irq_type" symbols to exist.
     # But s390x has none of them:
     if [ "$(uname -m)" != "s390x" ]; then
-        cat <<EOF >>"${K_TMP_DIR}/crash.cmd"
+        cat <<EOF >> "${K_TMP_DIR}/crash.cmd"
 irq
 irq -b
 irq -u
+exit
+EOF
+    else
+        cat <<EOF >> "${K_TMP_DIR}/crash.cmd"
+exit
+EOF
+    fi
+
+    # RHEL releases take different version of crash utility respectively, so
+    # here add cmds specific to versions.
+
+    if [[ "$K_DIST_VER" =~ ^(6|7)$ ]]; then
+        cat <<EOF >> "${K_TMP_DIR}/crash.cmd"
+list -o task_struct.tasks -h init_task
 exit
 EOF
     fi

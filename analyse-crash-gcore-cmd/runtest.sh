@@ -22,6 +22,11 @@
 
 analyse_crash_gcore_cmd()
 {
+    # crash-gcore-command is not supported in s390x/s390
+    if [[ "$(uname -m)" =~ "s390" ]]; then
+        log_warn "- Crash plugin crash-gcore-command is not supported in s390x/s390"
+    fi
+
     crash_prepare
 
     local package_name="crash-gcore-command"

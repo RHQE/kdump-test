@@ -24,7 +24,7 @@ analyse_objdump()
     crash_prepare
 
     local core=$(get_vmcore_path)
-    [ -z "${core}" ] && log_fatal_error "- Unable to find vmcore."
+    [ -z "${core}" ] && log_error "- Unable to find vmcore."
 
     log_info "- # objdump -x ${core}"
     objdump -x "${core}" 2>&1 | tee "${K_TMP_DIR}/objdump.log"
@@ -32,11 +32,8 @@ analyse_objdump()
 
     report_file "${K_TMP_DIR}/objdump.log"
     if [[ "${error_found}" -ne 0 ]]; then
-        log_fatal_error "- Fail: objdump returns errors"
+        log_error "- Fail: objdump returns errors"
     fi
-
-    ready_to_exit
 }
 
-log_info "- Start"
-analyse_objdump
+run_test analyse_objdump

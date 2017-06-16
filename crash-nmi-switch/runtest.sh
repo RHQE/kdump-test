@@ -31,7 +31,7 @@ crash_nmi_switch()
         install_rpm "OpenIPMI" "ipmitool"
         log_info "- Load IPMI modules"
         systemctl enable ipmi
-        systemctl start ipmi || service ipmi start || log_fatal_error "- Failed to start ipmi service."
+        systemctl start ipmi || service ipmi start || log_error "- Failed to start ipmi service."
 
         echo 1 > /proc/sys/kernel/panic_on_unrecovered_nmi
         touch "${C_REBOOT}"
@@ -41,14 +41,12 @@ crash_nmi_switch()
 
         # Wait for a while
         sleep 60
-        log_fatal_error "- Failed to trigger IPMI crash after waiting for 60s."
+        log_error "- Failed to trigger IPMI crash after waiting for 60s."
     else
         rm -f "${C_REBOOT}"
         validate_vmcore_exists
-        ready_to_exit
     fi
 }
 
-log_info "- Start"
-crash_nmi_switch
+run_test crash_nmi_switch
 

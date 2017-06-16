@@ -37,10 +37,8 @@ dump_kdump_pre()
         report_file /root/kdump-pre.log
         [ -f /root/kdump-pre.log ] && error_log "- Not found kdump-pre.log"
         validate_vmcore_exists
-        ready_to_exit
     fi
 }
 
-log_info "- Start"
-dump_kdump_pre
+run_test dump_kdump_pre
 

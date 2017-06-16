@@ -31,10 +31,8 @@ crash_sysrq_c()
     else
         rm -f "${C_REBOOT}"
         validate_vmcore_exists
-        ready_to_exit
     fi
 }
 
-log_info "- Start"
-crash_sysrq_c
+run_test crash_sysrq_c
 

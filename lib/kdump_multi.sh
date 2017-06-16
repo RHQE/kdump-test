@@ -39,7 +39,7 @@ get_role()
         echo "client"; return
     fi
 
-    log_fatal_error "- Unable to determine host role."
+    log_error "- Unable to determine host role."
 }
 
 
@@ -63,7 +63,7 @@ is_host_ip()
 # @param1: fw_service
 open_firewall_service()
 {
-    [ $# -lt 1 ] && log_fatal_error "- Syntax error: Expecting a service name."
+    [ $# -lt 1 ] && log_error "- Syntax error: Expecting a service name."
 
     local fw_service=$1
 
@@ -90,7 +90,7 @@ open_firewall_service()
 # @param2: fw_port
 open_firewall_port()
 {
-    [ $# -lt 2 ] && log_fatal_error "- Syntax error: Expecting a protocol and port"
+    [ $# -lt 2 ] && log_error "- Syntax error: Expecting a protocol and port"
 
     local fw_protocol=$1
     local fw_port=$2
@@ -137,7 +137,7 @@ wait_for_signal()
     if [ $? == 0 ]; then
         log_info "- Received signal at port $1"
     else
-        log_fatal_error "- Failed to listen for signal at port $1"
+        log_error "- Failed to listen for signal at port $1"
     fi
 }
 
@@ -169,7 +169,7 @@ send_notify_signal()
     done
 
     if [ "${retval}" -eq 1 ]; then
-        log_fatal_error "- Failed to notify server, got timeout."
+        log_error "- Failed to notify server, got timeout."
     else
         log_info "- Sent notify signal to ${server} at ${port} successfully"
     fi
@@ -199,7 +199,7 @@ config_ssh()
 
     local ip_version=${1:-"v4"}
     [[  "${ip_version}" =~ ^(v4|v6)$ ]] || {
-        log_fatal_error "- ${ip_version} is not supported. Onlyl ipv4 or ipv6 is supported."
+        log_error "- ${ip_version} is not supported. Onlyl ipv4 or ipv6 is supported."
     }
 
     if [[ $(get_role) == "client" ]]; then  # copy keys
@@ -215,7 +215,7 @@ config_ssh()
         if [[ ${ip_version} == "v6" ]]; then
             # get server ipv6 address
             ssh -i "${K_LOCK_SSH_ID_RSA}" "${server}" "cat ${path_ipv6_addr}" > ${path_ipv6_addr}.out
-            [ $? -eq 0 ] || log_fatal_error "- Failed to get server ipv6 address."
+            [ $? -eq 0 ] || log_error "- Failed to get server ipv6 address."
             server_ipv6=$(grep -P '^[0-9]+' "${path_ipv6_addr}".out | head -1)
             append_config "ssh root@${server_ipv6}"
         else
@@ -244,7 +244,7 @@ config_ssh()
         wait_for_signal ${sync_port}
 
     else
-        log_fatal_error "- Can not determine the role of host."
+        log_error "- Can not determine the role of host."
     fi
 }
 
@@ -289,7 +289,7 @@ config_nfs()
         else
             [[ "${TESTARGS:=nfs}" == nfs ]]
         fi
-        [ $? == 0 ] || log_fatal_error "The nfs opt passed in TESTARGS is invalid."
+        [ $? == 0 ] || log_error "The nfs opt passed in TESTARGS is invalid."
 
         local server_addr=${SERVERS}
         [ "${ip_version}" == "v6" ] && {
@@ -299,7 +299,7 @@ config_nfs()
             [ $? == 0 ] || {
                 log_info "- Notifying server that kdump config is done at client."
                 send_notify_signal "${server}" "${sync_port}"
-                log_fatal_error "- Failed to get server ipv6 address."
+                log_error "- Failed to get server ipv6 address."
             }
             server_addr=[$(grep -P '^[0-9]+' "${path_ipv6_addr}".out | head -1)]
         }
@@ -345,13 +345,13 @@ config_nfs()
         if [ ${retval} -eq 0 ]; then
             log_info "- NFS server is started"
         else
-            log_fatal_error "- Failed to start NFS server."
+            log_error "- Failed to start NFS server."
         fi
 
         log_info "- Waiting signal that kdump config is done at client"
         wait_for_signal ${sync_port}
     else
-        log_fatal_error "- Can not determine the role of host."
+        log_error "- Can not determine the role of host."
     fi
 }
 
@@ -415,7 +415,7 @@ prepare_ssh_connection()
         [ $? == 0 ] || {
             log_info "- Notifying server that ssh connection failed at client"
             send_notify_signal "${server}" "${sync_port}" ## MUST DO
-            log_fatal_error "- SSH connection test failed."
+            log_error "- SSH connection test failed."
         }
 
         log_info "- SSH connection test passed."
@@ -446,10 +446,10 @@ prepare_ssh_connection()
         log_info "- Notifying client that ssh preparation is done at server"
         send_notify_signal "${client}" "${sync_port}"
 
-        [ "${retval}" == 0 ] || log_fatal_error "- Failed to get ipv6 address from Server"
+        [ "${retval}" == 0 ] || log_error "- Failed to get ipv6 address from Server"
 
     else
-        log_fatal_error "- Unknown role: ${role}"
+        log_error "- Unknown role: ${role}"
     fi
 }
 

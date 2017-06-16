@@ -26,7 +26,7 @@
 ssh_v6_sysrq_test()
 {
     if [ -z "${SERVERS}" -o -z "${CLIENTS}" ]; then
-        log_fatal_error "No Server or Client hostname"
+        log_error "No Server or Client hostname"
     fi
 
     # port used for client/server sync
@@ -46,7 +46,7 @@ ssh_v6_sysrq_test()
 
             log_info "- Notifying server that test is done at client."
             send_notify_signal "${SERVERS}" ${done_sync_port}
-            log_fatal_error "- Failed to trigger crash."
+            log_error "- Failed to trigger crash."
 
         elif [[ $(get_role) == "server" ]]; then
             log_info "- Waiting at ${done_sync_port} for signal from client that test/crash is done."
@@ -54,15 +54,12 @@ ssh_v6_sysrq_test()
 
             log_info "- Checking vmcore on ssh server."
             validate_vmcore_exists flat
-            ready_to_exit
         fi
     else
         rm -f "${C_REBOOT}"
         log_info "- Notifying server that crash is done at client."
         send_notify_signal "${SERVERS}" ${done_sync_port}
-        ready_to_exit
     fi
 }
 
-log_info "- Start"
-ssh_v6_sysrq_test
+run_test ssh_v6_sysrq_test

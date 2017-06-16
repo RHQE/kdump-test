@@ -39,9 +39,7 @@ dump_fs_raw()
         rm -f "${C_REBOOT}"
 
         validate_vmcore_exists vmcore
-        ready_to_exit
     fi
 }
 
-log_info "- Start"
-dump_fs_raw
+run_test dump_fs_raw

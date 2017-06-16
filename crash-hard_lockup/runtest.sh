@@ -35,10 +35,8 @@ crash_hard_lockup()
     else
         rm -f "${C_REBOOT}"
         validate_vmcore_exists
-        ready_to_exit
     fi
 }
 
-log_info "- Start"
-crash_hard_lockup
+run_test crash_hard_lockup
 

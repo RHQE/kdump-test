@@ -28,7 +28,7 @@ OPTION="uuid"
 dump_fs_ext()
 {
     if [ ! -f "${C_REBOOT}" ]; then
-        [[ "${TESTARGS}" == ext* ]] || log_fatal_error "- ${TESTARGS} is not a valid ext type"
+        [[ "${TESTARGS}" == ext* ]] || log_error "- ${TESTARGS} is not a valid ext type"
 
         kdump_prepare
         config_kdump_fs ${TESTARGS}
@@ -39,9 +39,7 @@ dump_fs_ext()
         rm -f "${C_REBOOT}"
 
         validate_vmcore_exists
-        ready_to_exit
     fi
 }
 
-log_info "- Start"
-dump_fs_ext
+run_test dump_fs_ext

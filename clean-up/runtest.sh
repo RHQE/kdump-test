@@ -39,7 +39,7 @@ clean_up()
     if [ $? -eq 0 ]; then
         log_info "- Deleted vmcore files."
     else
-        log_fatal_error "- Failed to delete vmcore files."
+        log_error "- Failed to delete vmcore files."
     fi
 
     log_info "- Restoring firewall status."
@@ -79,11 +79,9 @@ clean_up()
         if [ $? -eq 0 ]; then
             log_info "- Disabled sshd service."
         else
-            log_fatal_error "- Failed to disable sshd service."
+            log_error "- Failed to disable sshd service."
         fi
     fi
-
-
 
     log_info "- Restoring kdump conf files."
     cp -f "${K_BAK_DIR}"/kdump.conf ${K_CONFIG}
@@ -94,9 +92,7 @@ clean_up()
     rm -rf "${K_INF_DIR}"
 
     log_info "- Done cleaning up"
-    ready_to_exit
 }
 
-log_info "- Start"
-clean_up
+run_test clean_up
 

@@ -35,9 +35,7 @@ dump_fail_default_reboot()
         rm -f "${C_REBOOT}"
         validate_vmcore_not_exists
     fi
-    ready_to_exit
 }
 
-log_info "- Start"
-dump_fail_default_reboot
+run_test dump_fail_default_reboot
 

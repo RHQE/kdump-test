@@ -32,10 +32,8 @@ crash_oops_panic()
     else
         rm -f "${C_REBOOT}"
         validate_vmcore_exists
-        ready_to_exit
     fi
 }
 
-log_info "- Start"
-crash_oops_panic
+run_test crash_oops_panic
 

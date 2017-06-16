@@ -33,10 +33,8 @@ crash_oops_BUG()
     else
         rm -f "${C_REBOOT}"
         validate_vmcore_exists
-        ready_to_exit
     fi
 }
 
-log_info "- Start"
-crash_oops_BUG
+run_test crash_oops_BUG
 

@@ -30,7 +30,7 @@ dump_lvm()
         kdump_prepare
 
         findmnt -kcno SOURCE "$MP" | grep "/dev/mapper/"
-        [ $? -eq 0 ] || log_fatal_error "- $MP is not LVM."
+        [ $? -eq 0 ] || log_error "- $MP is not LVM."
 
         config_kdump_fs
         report_system_info
@@ -40,9 +40,7 @@ dump_lvm()
         rm -f "${C_REBOOT}"
 
         validate_vmcore_exists
-        ready_to_exit
     fi
 }
 
-log_info "- Start"
-dump_lvm
+run_test dump_lvm

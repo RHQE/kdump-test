@@ -36,12 +36,10 @@ dump_kdump_post()
         rm -f "${C_REBOOT}"
         report_file /root/kdump-post.log
         grep "dump result 0" /root/kdump-post.log
-        [ $? != 0 ] && log_fatal_error "- Not found \"dump result 0\" in kdump-post.log"
+        [ $? != 0 ] && log_error "- Not found \"dump result 0\" in kdump-post.log"
         validate_vmcore_exists
-        ready_to_exit
     fi
 }
 
-log_info "- Start"
-dump_kdump_post
+run_test dump_kdump_post
 

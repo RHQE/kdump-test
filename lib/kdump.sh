@@ -93,7 +93,7 @@ install_rpm()
 {
     if [[ $# -gt 0 ]]; then
         for pkg in $@; do
-            rpm -q $pkg || yum install -y $pkg || log_fatal_error "- Install package $pkg failed!"
+            rpm -q $pkg || yum install -y $pkg || log_error "- Install package $pkg failed!"
         done
         log_info "- Installed $* successfully"
     fi
@@ -116,7 +116,7 @@ install_rpm_from_repo()
         local repo=$2
         local opt=${3:-"install"}
         $cmd ${opt} -y --enablerepo=$repo $pkg
-        [[ $? -ne 0  ]] && log_fatal_error "- Install/upgrade package $pkg from $repo failed!"
+        [[ $? -ne 0  ]] && log_error "- Install/upgrade package $pkg from $repo failed!"
         log_info "- Installed/upgraded $pkg from $repo successfully"
     fi
 }
@@ -129,7 +129,7 @@ install_rpm_from_repo()
 # @param3: dest  # path to dir where .ko will be generated to. defaul to <name>
 make_module()
 {
-    [ $# -lt 2 ] && log_fatal_error "- No module name or from path"
+    [ $# -lt 2 ] && log_error "- No module name or from path"
     local name=$1
     local from=$2
     local dest=${3:-$name}
@@ -139,7 +139,7 @@ make_module()
     cp "${from}"/Makefile."${name}" "${dest}/Makefile"
 
     unset ARCH
-    make -C "${name}/" || log_fatal_error "- Can not make module."
+    make -C "${name}/" || log_error "- Can not make module."
     export ARCH
     ARCH=$(uname -m)
 }
@@ -152,14 +152,14 @@ make_module()
 # @param3: dest  # path to dir where .ko will be generated to. defaul to <name>
 make_install_module()
 {
-    [ $# -lt 2 ] && log_fatal_error "- No module name or from path"
+    [ $# -lt 2 ] && log_error "- No module name or from path"
     local name=$1
     local from=$2
     local dest=${3:-$name}
 
     make_module "${name}" "${from}" "${dest}"
 
-    insmod "${dest}/${name}.ko" || log_fatal_error "- Failed to insmod module."
+    insmod "${dest}/${name}.ko" || log_error "- Failed to insmod module."
 }
 
 
@@ -169,7 +169,7 @@ make_install_module()
 # @description: install required packakges for multi-host tests
 multihost_prepare()
 {
-    which nc || yum install -y nmap-ncat || yum install -y nc || log_fatal_error "- Failed to install nc client"
+    which nc || yum install -y nmap-ncat || yum install -y nc || log_error "- Failed to install nc client"
 }
 
 
@@ -255,7 +255,7 @@ kdump_prepare()
                     --update-kernel="${default}" &&
                 if [ "${K_ARCH}" = "s390x" ]; then zipl; fi
             } || {
-                log_fatal_error "- Change boot loader error!"
+                log_error "- Change boot loader error!"
             }
             log_info "- Reboot system for system preparing."
             reboot_system
@@ -266,7 +266,7 @@ kdump_prepare()
     # if not, print out cmdline and exit.
     if [ "$(cat /sys/kernel/kexec_crash_size)" -eq 0 ]; then
         log_info "- Kernel Boot Cmdline is: $(cat /proc/cmdline)"
-        log_fatal_error "- No memory is reserved for crashkernel!"
+        log_error "- No memory is reserved for crashkernel!"
     fi
 
     # enable sysrq
@@ -274,7 +274,7 @@ kdump_prepare()
     sysctl -p
 
     # enable kdump service: systemd
-    /bin/systemctl enable kdump.service || /sbin/chkconfig kdump on || log_fatal_error "- Failed to enable kdump!"
+    /bin/systemctl enable kdump.service || /sbin/chkconfig kdump on || log_error "- Failed to enable kdump!"
     log_info "- Enabled kdump service."
     kdump_restart
 }
@@ -319,7 +319,7 @@ kdump_restart()
     rm -f /boot/initramfs-*kdump.img  # for rhel7
     touch "${K_CONFIG}"
 
-    /usr/bin/kdumpctl restart 2>&1 || /sbin/service kdump restart 2>&1 || log_fatal_error "- Failed to start kdump!"
+    /usr/bin/kdumpctl restart 2>&1 || /sbin/service kdump restart 2>&1 || log_error "- Failed to start kdump!"
     log_info "- Kdump service starts successfully."
 }
 
@@ -375,7 +375,7 @@ remove_config()
 #   config_kdump_any "kdump_post /bin/your_script"
 config_kdump_any()
 {
-    [ $# -eq 0 ] && log_fatal_error "- Expect a config line"
+    [ $# -eq 0 ] && log_error "- Expect a config line"
     append_config "$1"
     kdump_restart
 }
@@ -413,7 +413,7 @@ label_fs()
             ;;
     esac
 
-    [ $? -ne 0 ] && log_fatal_error "- Failed to label $fstype with $label on $dev"
+    [ $? -ne 0 ] && log_error "- Failed to label $fstype with $label on $dev"
 }
 
 
@@ -448,7 +448,7 @@ config_kdump_fs()
     fi
 
     if [[ -n "$required_fstype" &&  "$required_fstype" != "$fstype" ]]; then
-        log_fatal_error "- Expect ${MP} to be fs_type ${required_fstype}, but it's ${fstype}"
+        log_error "- Expect ${MP} to be fs_type ${required_fstype}, but it's ${fstype}"
     fi
 
     # get target
@@ -484,7 +484,7 @@ config_kdump_fs()
         # tell crash analyse procedure where to find vmcore
         echo "${MP%/}${KPATH}" > "${K_PATH}"
     else
-        log_fatal_error "- Null dump_device/uuid/label or wrong type."
+        log_error "- Null dump_device/uuid/label or wrong type."
     fi
 
     kdump_restart
@@ -525,7 +525,7 @@ config_kdump_sysconfig()
 {
     log_info "- Updating kdump sysconfig."
 
-    [ $# -lt 3 ] && log_fatal_error "- Expect at least 3 args."
+    [ $# -lt 3 ] && log_error "- Expect at least 3 args."
     local key=$1
     local action=$2
     local value1=$3
@@ -544,14 +544,14 @@ config_kdump_sysconfig()
             sed -i  /^"$key="/s/"$value1"//g "${K_SYS_CONFIG}"
             ;;
         replace)
-            [ -z "$value2" ] && log_fatal_error "- Missing new_value for replacing."
+            [ -z "$value2" ] && log_error "- Missing new_value for replacing."
             sed -i  /^"$key="/s/"$value1"/"$value2"/g "${K_SYS_CONFIG}"
             ;;
         *)
-            log_fatal_error "- Invalid action '${action}' for editing kdump sysconfig."
+            log_error "- Invalid action '${action}' for editing kdump sysconfig."
             ;;
     esac
-    [ $? -ne 0 ] && log_fatal_error "- Failed to updated kdump sysconfig."
+    [ $? -ne 0 ] && log_error "- Failed to updated kdump sysconfig."
     sync;sync;sync
     # it requires to reload the crash kernel for kdump
     kdump_restart
@@ -570,7 +570,7 @@ trigger_sysrq_crash()
     echo c > /proc/sysrq-trigger
 
     sleep 60
-    log_fatal_error "- Failed to trigger crash after waiting for 60s."
+    log_error "- Failed to trigger crash after waiting for 60s."
 }
 
 
@@ -581,7 +581,7 @@ trigger_sysrq_crash()
 # @parma1: opt
 trigger_crasher()
 {
-    [ $# -lt 1 ] && log_fatal_error "- Missing opt to trigger crasher"
+    [ $# -lt 1 ] && log_error "- Missing opt to trigger crasher"
 
     local opt=$1
     touch "${C_REBOOT}"
@@ -597,7 +597,23 @@ trigger_crasher()
     echo $opt > /proc/crasher
 
     sleep 60
-    log_fatal_error "- Failed to trigger crash after waiting for 60s."
+    log_error "- Failed to trigger crash after waiting for 60s."
 }
 
+# @usage: trigger_crasher <test_name>
+# @description:
+#       run <test_name> and exit
+# @parma1: test_name
+run_test()
+{
+    func=$1
 
+    warn=0
+    error=0
+
+    log_info "- Start"
+
+    ${func}
+
+    ready_to_exit
+}

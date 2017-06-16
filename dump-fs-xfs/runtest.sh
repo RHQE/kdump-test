@@ -37,9 +37,7 @@ dump_fs_xfs()
         rm -f "${C_REBOOT}"
 
         validate_vmcore_exists
-        ready_to_exit
     fi
 }
 
-log_info "- Start"
-dump_fs_xfs
+run_test dump_fs_xfs

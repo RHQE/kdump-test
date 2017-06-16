@@ -108,16 +108,13 @@ EOF
     fi
 
     local vmx="/usr/lib/debug/lib/modules/$(uname -r)/vmlinux"
-    [ ! -f "${vmx}" ] && log_fatal_error "- Unable to find vmlinux."
+    [ ! -f "${vmx}" ] && log_error "- Unable to find vmlinux."
 
     local core=$(get_vmcore_path)
-    [ -z "${core}" ] && log_fatal_error "- Unable to find vmcore."
+    [ -z "${core}" ] && log_error "- Unable to find vmcore."
 
     crash_cmd "" "${vmx}" "${core}" "${K_TMP_DIR}/crash-simple.cmd"
     crash_cmd "" "${vmx}" "${core}" "${K_TMP_DIR}/crash.cmd" check_crash_output
-
-    ready_to_exit
 }
 
-log_info "- Start"
-analyse_crash
+run_test analyse_crash

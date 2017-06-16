@@ -24,7 +24,7 @@ analyse_eu_readelf()
     crash_prepare
 
     local core=$(get_vmcore_path)
-    [ -z "${core}" ] && log_fatal_error "- Unable to find vmcore."
+    [ -z "${core}" ] && log_error "- Unable to find vmcore."
 
     log_info "- # eu-readelf -a ${core}"
     eu-readelf -a "${core}" 2>&1 | tee "${K_TMP_DIR}/eu-readelf.log"
@@ -32,11 +32,9 @@ analyse_eu_readelf()
 
     report_file "${K_TMP_DIR}/eu-readelf.log"
     if [ "${error_found}" -ne 0 ]; then
-        log_fatal_error "- Fail: eu-readelf returns errors"
+        log_error "- Fail: eu-readelf returns errors"
     fi
-
-    ready_to_exit
 }
 
-log_info "- Start"
-analyse_eu_readelf
+
+run_test analyse_eu_readelf

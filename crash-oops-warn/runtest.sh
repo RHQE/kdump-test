@@ -30,7 +30,7 @@ crash-oops-warn()
         # Set panic_on_warn
         log_info "- # echo 1 > /proc/sys/kernel/panic_on_warn."
         echo 1 > /proc/sys/kernel/panic_on_warn
-        [[ $? -ne 0 ]] && log_fatal_error "- Error to echo 1 > /proc/sys/kernel/panic_on_warn"
+        [[ $? -ne 0 ]] && log_error "- Error to echo 1 > /proc/sys/kernel/panic_on_warn"
 
         # Trigger panic_on_warn
         touch "${C_REBOOT}"
@@ -40,15 +40,13 @@ crash-oops-warn()
 
         # Wait for a while
         sleep 60
-        log_fatal_error "- Failed to trigger panic_on_warn after waiting for 60s."
+        log_error "- Failed to trigger panic_on_warn after waiting for 60s."
 
     else
         rm -f "${C_REBOOT}"
         validate_vmcore_exists
-        ready_to_exit
     fi
 }
 
-log_info "- Start"
-crash-oops-warn
+run_test crash-oops-warn
 

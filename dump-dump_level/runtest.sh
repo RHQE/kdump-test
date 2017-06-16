@@ -34,10 +34,8 @@ dump_dump_level()
     else
         rm -f "${C_REBOOT}"
         validate_vmcore_exists
-        ready_to_exit
     fi
 }
 
-log_info "- Start"
-dump_dump_level
+run_test dump_dump_level
 

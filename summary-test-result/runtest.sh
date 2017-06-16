@@ -30,17 +30,17 @@ summary_test_result()
         local warn
 
         total=$(wc -l < "${K_TEST_SUMMARY}")
-        pass=$(grep -o 'Pass' "${K_TEST_SUMMARY}" | wc -l)
-        fail=$(grep -o 'Fail' "${K_TEST_SUMMARY}" | wc -l)
-        warn=$(grep -o 'Warn' "${K_TEST_SUMMARY}" | wc -l)
+        pass=$(grep -o 'PASS' "${K_TEST_SUMMARY}" | wc -l)
+        fail=$(grep -o 'FAIL' "${K_TEST_SUMMARY}" | wc -l)
+        warn=$(grep -o 'WARN' "${K_TEST_SUMMARY}" | wc -l)
 
-        sed -i '1i\+-------- Test Result -------+' "${K_TEST_SUMMARY}"
-        echo "+--------- Summary ----------+" >> "${K_TEST_SUMMARY}"
+        sed -i '1i\+------------ Test Result -----------+' "${K_TEST_SUMMARY}"
+        echo "+------------- Summary --------------+" >> "${K_TEST_SUMMARY}"
         echo -e "Total:\t${total}" >> "${K_TEST_SUMMARY}"
         echo -e "Passed:\t${pass}" >> "${K_TEST_SUMMARY}"
         echo -e "Warned:\t${warn}" >> "${K_TEST_SUMMARY}"
         echo -e "Failed:\t${fail}" >> "${K_TEST_SUMMARY}"
-        echo "+-----------------------------+" >> "${K_TEST_SUMMARY}"
+        echo "+-------------------------------------+" >> "${K_TEST_SUMMARY}"
         report_file "${K_TEST_SUMMARY}"
 }
 

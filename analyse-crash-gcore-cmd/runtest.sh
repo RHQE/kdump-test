@@ -38,9 +38,9 @@ analyse_crash_gcore_cmd()
     install_rpm "${package_name}"
     gcore=$(rpm -ql "${package_name}" | grep gcore.so)
     vmx="/usr/lib/debug/lib/modules/$(uname -r)/vmlinux"
-    [ ! -f "${vmx}" ] && log_fatal_error "- Unable to find vmlinux."
+    [ ! -f "${vmx}" ] && log_error "- Unable to find vmlinux."
     core=$(get_vmcore_path)
-    [ -z "${core}" ] && log_fatal_error "- Unable to find vmcore."
+    [ -z "${core}" ] && log_error "- Unable to find vmcore."
 
     # Get the pid/proc name
     cat<<EOF > pid.cmd
@@ -51,7 +51,7 @@ EOF
     log_info "- # crash ${vmx} ${core} -s -i pid.cmd | tee ${gcore_log}"
     crash "${vmx}" "${core}" -s -i pid.cmd 2>&1 | tee "${gcore_log}"
     [[ ${PIPESTATUS[1]} -eq "0" ]] || {
-        log_fatal_error "- Failed to run crash with pid.cmd. See logs in ${gcore.log}"
+        log_error "- Failed to run crash with pid.cmd. See logs in ${gcore.log}"
     }
 
     log_info "- Getting pid/proc from ${gcore_log}"
@@ -63,7 +63,7 @@ EOF
         log_info "- pid: ${pid}"
         log_info "- proc: ${proc}"
     else
-        log_fatal_error "- ${gcore_log} is empty!"
+        log_error "- ${gcore_log} is empty!"
     fi
 
     # Run gcore
@@ -77,26 +77,24 @@ EOF
     log_info "- # crash ${vmx} ${core} -s -i gcore.cmd | tee -a ${gcore_log}"
     crash ${vmx} ${core} -s -i gcore.cmd 2>&1 | tee -a ${gcore_log}
     [[ ${PIPESTATUS[1]} -eq "0" ]] || {
-        log_fatal_error "- Failed to run crash with pid.cmd. See logs in ${gcore.log}"
+        log_error "- Failed to run crash with pid.cmd. See logs in ${gcore.log}"
     }
     report_file ${gcore_log}
 
     grep -q 'gcore.so: shared object loaded' ${gcore_log} || {
-        log_fatal_error "Failed to load gcore.so"
+        log_error "Failed to load gcore.so"
     }
-    [ -s "core.${pid}.${proc}" ] || log_fatal_error "- File core.${pid}.${proc} doesn't exist."
+    [ -s "core.${pid}.${proc}" ] || log_error "- File core.${pid}.${proc} doesn't exist."
 
     gdb "core.${pid}.${proc}" --quiet -ex q 2>&1 | tee gdb.log
     [[ ${PIPESTATUS[1]} -eq "0" ]] || {
-        log_fatal_error "- Fail to process core.${pid}.${proc} using gdb. See logs in gdb.log"
+        log_error "- Fail to process core.${pid}.${proc} using gdb. See logs in gdb.log"
     }
     report_file gdb.log
 
 
     rm -f gdb.log "${gcore_log}"
     rm -f *.cmd
-    ready_to_exit
 }
 
-log_info "- Start"
-analyse_crash_gcore_cmd
+run_test analyse_crash_gcore_cmd

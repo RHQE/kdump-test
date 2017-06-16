@@ -35,10 +35,8 @@ dump_partition_DevName()
         rm -f "${C_REBOOT}"
 
         validate_vmcore_exists
-        ready_to_exit
     fi
 
 }
 
-log_info "- Start"
-dump_partition_DevName
+run_test dump_partition_DevName

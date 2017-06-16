@@ -24,7 +24,7 @@ enable_tracer()
 {
     log_info "- Check & mount debugfs"
     if ! grep -q debugfs /proc/filesystems; then
-        log_fatal_error "- No debugfs available"
+        log_error "- No debugfs available"
     else
         mount -t debugfs nodev ${DEBUG_PATH}
     fi
@@ -40,7 +40,7 @@ enable_tracer()
     log_info "- CURRENT_TRACER: " $(cat "${TRACE_PATH}/current_tracer")
 
     grep "tracer: ${current_tracer}" "${TRACE_PATH}/trace"
-    [ $? -ne 0 ] && log_fatal_error "- Tracer is not enabled. No trace data in pipe!"
+    [ $? -ne 0 ] && log_error "- Tracer is not enabled. No trace data in pipe!"
 }
 
 analyse_crash_trace_cmd()
@@ -98,15 +98,12 @@ EOF
     echo "exit" >> "${K_TMP_DIR}/crash.cmd"
 
     local vmx="/usr/lib/debug/lib/modules/$(uname -r)/vmlinux"
-    [ ! -f "${vmx}" ] && log_fatal_error "- Unable to find vmlinux."
+    [ ! -f "${vmx}" ] && log_error "- Unable to find vmlinux."
 
     local core=$(get_vmcore_path)
-    [ -z "${core}" ] && log_fatal_error "- Unable to find vmcore."
+    [ -z "${core}" ] && log_error "- Unable to find vmcore."
 
     crash_cmd "" "${vmx}" "${core}" "${K_TMP_DIR}/crash.cmd" check_crash_output
-
-    ready_to_exit
 }
 
-log_info "- Start"
-analyse_crash_trace_cmd
+run_test analyse_crash_trace_cmd

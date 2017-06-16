@@ -26,7 +26,7 @@
 nfs_sysrq_nomount()
 {
     if [ -z "${SERVERS}" -o -z "${CLIENTS}" ]; then
-        log_fatal_error "No Server or Client hostname"
+        log_error "No Server or Client hostname"
     fi
 
     # port used for client/server sync
@@ -60,12 +60,11 @@ nfs_sysrq_nomount()
 
             log_info "- Notifying server that test is done at client."
             send_notify_signal "${SERVERS}" ${done_sync_port}
-            log_fatal_error "- Failed to trigger crash."
+            log_error "- Failed to trigger crash."
 
         elif [[ $(get_role) == "server" ]]; then
             log_info "- Waiting for signal that test is done at client."
             wait_for_signal ${done_sync_port}
-            ready_to_exit
         fi
     else
         rm -f "${C_REBOOT}"
@@ -75,12 +74,10 @@ nfs_sysrq_nomount()
         log_info "- Notifying server that test is done at client."
         send_notify_signal "${SERVERS}" ${done_sync_port}
 
-        [ ${retval} -eq 0 ] || log_fatal_error "- Failed to copy vmcore"
+        [ ${retval} -eq 0 ] || log_error "- Failed to copy vmcore"
 
         validate_vmcore_exists
-        ready_to_exit
     fi
 }
 
-log_info "- Start"
-nfs_sysrq_nomount
+run_test nfs_sysrq_nomount

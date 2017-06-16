@@ -31,7 +31,7 @@ dump_compression()
         # allowed compression options: -c -l -p
 
         [[ "${TESTARGS}" =~ ^(-c|-l|-p)$ ]] || {
-            log_fatal_error "- Invalid compression option ${TESTARGS}"
+            log_error "- Invalid compression option ${TESTARGS}"
         }
         config_kdump_filter "${TESTARGS} -d 31"
         report_system_info
@@ -40,10 +40,8 @@ dump_compression()
     else
         rm -f "${C_REBOOT}"
         validate_vmcore_exists
-        ready_to_exit
     fi
 }
 
-log_info "- Start"
-dump_compression
+run_test dump_compression
 

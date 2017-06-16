@@ -27,7 +27,7 @@ analyse_readelf()
     local warn=0
 
     local core=$(get_vmcore_path)
-    [ -z "${core}" ] && log_fatal_error "- Unable to find vmcore."
+    [ -z "${core}" ] && log_error "- Unable to find vmcore."
 
     log_info "- # readelf -a ${core}"
     readelf -a "${core}" 2>&1 | tee "${K_TMP_DIR}/readelf.log"
@@ -49,11 +49,8 @@ analyse_readelf()
     }
 
     if [[  ${error} -ne 0 || ${warn} -eq 0  ]]; then
-        log_fatal_error "- Fail: readelf returns errors/warnings"
+        log_error "- Fail: readelf returns errors/warnings"
     fi
-
-    ready_to_exit
 }
 
-log_info "- Start"
-analyse_readelf
+run_test analyse_readelf

@@ -161,9 +161,6 @@ EOF
     export SKIP_ERROR_PAT="kmem:.*error.*encountered"
     crash_cmd "" "" "" "${K_TMP_DIR}/crash-simple.cmd"
     crash_cmd "" "" "" "${K_TMP_DIR}/crash.cmd" check_crash_output
-
-    ready_to_exit
 }
 
-log_info "- Start"
-analyse_live
+run_test analyse_live

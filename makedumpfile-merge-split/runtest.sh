@@ -75,11 +75,11 @@ makedumpfile_merge_split()
     # in case kernel is updated after crash_prepare()
     VMLINUX="/usr/lib/debug/lib/modules/$(uname -r)/vmlinux"
 
-    [ ! -f "${VMLINUX}" ] && log_fatal_error "- Unable to find vmlinux."
+    [ ! -f "${VMLINUX}" ] && log_error "- Unable to find vmlinux."
 
     local core
     core=$(get_vmcore_path)
-    [ -z "${core}" ] && log_fatal_error "- Unable to find vmcore."
+    [ -z "${core}" ] && log_error "- Unable to find vmcore."
 
     local split_cmd
     local merge_cmd
@@ -91,19 +91,14 @@ makedumpfile_merge_split()
 
     log_info "- # ${split_cmd}"
     eval "${split_cmd} 2>&1"
-    retval=$?
-    [ "${retval}" -ne 0 ] && log_fatal_error "- The makedumpfile command returns ${retval}"
+    [ "$?" -ne 0 ] && log_error "- The makedumpfile command returns ${retval}"
 
     log_info "- # ${merge_cmd}"
     eval "${merge_cmd} 2>&1"
-    retval=$?
-    [ "${retval}" -ne 0 ] && log_fatal_error "- The makedumpfile command returns ${retval}"
+    [ "$?" -ne 0 ] && log_error "- The makedumpfile command returns ${retval}"
 
     log_info "- Validating the merged dumpfile."
     verify_scrub
-
-    ready_to_exit
 }
 
-log_info "- Start"
-makedumpfile_merge_split
+run_test makedumpfile_merge_split

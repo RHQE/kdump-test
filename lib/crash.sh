@@ -60,7 +60,7 @@ get_vmcore_path()
     }
 
     [ ! -d "${vmcore_path}" ] && {
-        log_fatal_error "- Failed to find vmcore. ${vmcore_path} is not a directory"
+        log_error "- Failed to find vmcore. ${vmcore_path} is not a directory"
     }
 
     local find_cmd="find "\"${vmcore_path}\"" -newer "\"${K_CONFIG}\"" -name "\"${vmcore_name}\"" -type f"
@@ -68,7 +68,7 @@ get_vmcore_path()
 
     local vmcore_full_path
     if [[ ${count} -gt 1 ]]; then
-        log_fatal_error "- More than one vmcore is found in ${vmcore_path}. Expect 1 or 0."
+        log_error "- More than one vmcore is found in ${vmcore_path}. Expect 1 or 0."
     else
         vmcore_full_path=$(eval "${find_cmd}")
         echo "${vmcore_full_path}"
@@ -94,17 +94,17 @@ validate_vmcore_exists()
     if [ ! -z "${vmcore_full_path}" ]; then
         log_info "- Found vmcore ${vmcore_format} file at ${vmcore_full_path}"
     else
-        log_fatal_error "- No vmcore file is found."
+        log_error "- No vmcore file is found."
     fi
 
-    # if no vmcore format is specified, check vmcore-dmesg as well.
+    # if vmcore format is not specified, check vmcore-dmesg as well.
     [[ -z ${vmcore_format} ]] && {
         log_info "- Validate if vmcore-dmesg.txt exists"
         vmcore_full_path=$(get_vmcore_path "dmesg")
         if [ ! -z "${vmcore_full_path}" ]; then
             log_info "- Found vmcore-dmesg file at ${vmcore_full_path}"
         else
-            log_fatal_error "- No vmcore-dmesg is found."
+            log_error "- No vmcore-dmesg is found."
         fi
     }
 }
@@ -124,7 +124,7 @@ validate_vmcore_not_exists()
     vmcore_full_path=$(get_vmcore_path "${vmcore_format}")
 
     if [ ! -z "${vmcore_full_path}" ]; then
-        log_fatal_error "- Found vmcore file at ${vmcore_full_path}"
+        log_error "- Found vmcore file at ${vmcore_full_path}"
     else
         log_info "- No vmcore file is found."
     fi
@@ -151,7 +151,7 @@ crash_cmd()
 
     local retval
 
-    [ -f "${crash_cmd_file}" ] || log_fatal_error "- No such file ${crash_cmd_file}."
+    [ -f "${crash_cmd_file}" ] || log_error "- No such file ${crash_cmd_file}."
 
     log_info "- # crash ${args} -i ${crash_cmd_file} ${vmx} ${core}"
     # The EOF part is a workaround of a crash utility bug - crash utility
@@ -167,12 +167,12 @@ EOF
 
 
     # check return code of the crash command
-    [ $retval == 0 ] || log_fatal_error "- Crash returns error code ${retval}"
+    [ $retval == 0 ] || log_error "- Crash returns error code ${retval}"
 
     # check output of the crash command
     if [ -n "${func_check_output}" ]; then
         ${func_check_output} "${crash_cmd_file}.${log_suffix}"
-        [ $? == 0 ] || log_fatal_error "- Failed to run: \
+        [ $? == 0 ] || log_error "- Failed to run: \
             ${func_check_output} ${crash_cmd_file}.${log_suffix}"
     fi
     log_info "- Done running and checking crash cmd."
@@ -340,7 +340,7 @@ check_crash_output()
 
     if [[ ${error_found} -eq 0 || ${warn_found} -eq 0 ]]; then
         report_file "${K_CRASH_REPORT}"
-        log_fatal_error "- Found errors/warnings in Crash commands. \
+        log_error "- Found errors/warnings in Crash commands. \
             See ${output_file} for more details."
     fi
 
@@ -373,7 +373,7 @@ check_gdb_output()
                 -e 'error' \
                 -e 'invalid' \
        2>&1; then
-        log_fatal_error "- Found errors/warnings in GDB commands. \
+        log_error "- Found errors/warnings in GDB commands. \
             See ${output_file} for more details."
     else
         log_info "- Finished analysing GDB output.\

@@ -45,9 +45,7 @@ dump_nr_cpus()
     else
         rm -f "${C_REBOOT}"
         validate_vmcore_exists
-        ready_to_exit
     fi
 }
 
-log_info "- Start"
-dump_nr_cpus
+run_test dump_nr_cpus

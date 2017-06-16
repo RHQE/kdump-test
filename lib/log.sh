@@ -20,10 +20,14 @@
 # Author: Qiao Zhao <qzhao@redhat.com>
 
 ((LIB_LOG_SH)) && return || LIB_LOG_SH=1
+
 readonly K_LOG_FILE="./result.log"
+readonly K_ERROR_FILE="./K_ERROR"
+readonly K_WARN_FILE="./K_WARN"
 readonly K_TEST_SUMMARY="../test_summary.log"
 
 K_TEST_NAME=$(basename "$(pwd)")
+
 
 # @usage: is_beaker_env
 # @description: check it is a beaker environment
@@ -42,14 +46,14 @@ is_beaker_env()
 
 # @usage: log <level> <mesg>
 # @description: Print Log info into ${K_LOG_FILE}
-# @param1: level # ERROR, INFO, WARN
+# @param1: level # INFO, WARN, ERROR, FATAL
 # @param2: mesg
 log()
 {
     local level="$1"
     shift
     echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] $level $*" >> "${K_LOG_FILE}"
-    if [[ $level == "ERROR" ]]; then
+    if [ "$level" == "ERROR" -o "$level" == "FATAL" ]; then
         echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] $level $*" >&2
     else
         echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] $level $*"
@@ -58,12 +62,14 @@ log()
 
 
 # @usage: report_file <filename>
-# @description: report file to beaker server
+# @description:
+#       upload file to beaker server if beaker env
+#       otherwise print it to console
 # @param1: filename
 report_file()
 {
     local filename="$1"
-    if [[ -f "${filename}" ]]; then
+    if [ -f "${filename}" ]; then
         if is_beaker_env; then
             rhts-submit-log -l "$filename"
         else
@@ -90,69 +96,80 @@ log_info()
 log_warn()
 {
     log "WARN" "$@"
-    ready_to_exit 1
+    printf n >> "${K_WARN_FILE}"
 }
 
 # @usage: log_error <mesg>
-# @description: log ERROR message and exit
+# @description: log ERROR message and exit current task
 # @param1: mesg
 log_error()
 {
     log "ERROR" "$@"
-    ready_to_exit 2
-    exit 1
+    printf n >> "${K_ERROR_FILE}"
+    ready_to_exit
 }
 
-# @usage: log_fatal_error <mesg>
-# @description: log ERROR message and exit
+# @usage: log_fatal<mesg>
+# @description: log ERROR message
+#               and abort recipeset (only if beaker env)
 # @param1: mesg
-log_fatal_error()
+log_fatal()
 {
-    log "ERROR" "$@"
-    ready_to_exit 3
-    exit 1
+    log "FATAL" "$@"
+
+    local result="FAIL"
+    local code=1
+
+    echo -e "${K_TEST_NAME}\t\t\t${result}" >> "${K_TEST_SUMMARY}"
+
+    if is_beaker_env; then
+        report_result "${TEST}" "${result}" "${code}"
+        rhts-abort -t recipeset
+        exit ${code}
+    else
+        log_info "- [${result}] Please check test logs!"
+        exit $code
+    fi
 }
 
 
 # @usage: ready_to_exit <exit_code>
 # @description:
 #       report test log/status and exit
-#       abort test if fail
-# @param1: exit_code  # (1- Fail  Other - Pass)
+#       # of warns/errors reported during tests
+#       will be fetched from K_ERROR_FILE and K_WARN_FILE
 ready_to_exit()
 {
     report_file "${K_LOG_FILE}"
 
-    if is_beaker_env; then
-        if [[ $1 == "1" ]]; then   # Warn - Report warn and continue to next test
-            echo -e "${K_TEST_NAME}\t\t\tWarn" >> "${K_TEST_SUMMARY}"
-            report_result "${TEST}" "WARN" "1"
-        elif [[ $1 == "2" ]]; then   # Error - Report error and continue to next test
-            echo -e "${K_TEST_NAME}\t\t\tFail" >> "${K_TEST_SUMMARY}"
-            report_result "${TEST}" "FAIL" "1"
-        elif [[ $1 == "3" ]]; then   # Fatal error - Report error and abort test
-            echo -e "${K_TEST_NAME}\t\t\tFail" >> "${K_TEST_SUMMARY}"
-            report_result "${TEST}" "FAIL" "1"
-            rhts-abort -t recipeset
-        else
-            echo -e "${K_TEST_NAME}\t\t\tPass" >> "${K_TEST_SUMMARY}"
-            report_result "${TEST}" "PASS" "0"
-        fi
+    local result
+    local code
+
+    if [ -f "${K_ERROR_FILE}" ]; then
+        result="FAIL"
+        code=$(wc -c < "${K_ERROR_FILE}")
+    elif [ -f "${K_WARN_FILE}" ]; then
+        result="WARN"
+        code=$(wc -c < "${K_WARN_FILE}")
     else
-        if [[ $1 == "1" ]]; then # Warn - Report warn and continue to next test
-            echo -e "${K_TEST_NAME}\t\t\tWarn" >> "${K_TEST_SUMMARY}"
-            log_info "- [WARN] Please check test logs!"
-        elif [[ $1 == "2" ]]; then # Error - Report error and exit test
-            echo -e "${K_TEST_NAME}\t\t\tFail" >> "${K_TEST_SUMMARY}"
-            log_info "- [FAIL] Please check test logs!"
-            exit 1
-        elif [[ $1 == "3" ]]; then # Fatal error - Report error and exit test
-            echo -e "${K_TEST_NAME}\t\t\tFail" >> "${K_TEST_SUMMARY}"
-            log_info "- [FATAL_FAIL] Please check test logs!"
-            exit 1
+        result="PASS"
+        code=0
+    fi
+
+    rm -f "$K_ERROR_FILE" "$K_WARN_FILE"
+
+    # log [test name and result] to K_TEST_SUMMARY
+    echo -e "${K_TEST_NAME}\t\t\t${result}" >> "${K_TEST_SUMMARY}"
+
+    if is_beaker_env; then
+        report_result "${K_TEST_NAME}" "${result}" "$code"
+        exit
+    else
+        if [ "${result}" != "PASS" ]; then
+            log_info "- [${result}] Please check test logs!"
+            exit $code
         else
-            echo -e "${K_TEST_NAME}\t\t\tPass" >> "${K_TEST_SUMMARY}"
-            log_info "- [PASS] Tests finished successfully!"
+            log_info "- [${result}] Tests finished successfully!"
             exit 0
         fi
     fi

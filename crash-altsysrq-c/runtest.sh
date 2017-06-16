@@ -28,7 +28,7 @@ crash_altsysrq_c()
         report_system_info
 
         make_module "altsysrq" .
-        insmod ./altsysrq/altsysrq.ko || log_fatal_error "- Fail to insmod altsysrq."
+        insmod ./altsysrq/altsysrq.ko || log_error "- Fail to insmod altsysrq."
 
         touch "${C_REBOOT}"
         sync
@@ -37,14 +37,12 @@ crash_altsysrq_c()
         sync
         echo c > /proc/driver/altsysrq
 
-        log_fatal_error "- Failed to trigger panic!"
+        log_error "- Failed to trigger panic!"
     else
         rm "${C_REBOOT}"
         validate_vmcore_exists
-        ready_to_exit
     fi
 }
 
-log_info "- Start"
-crash_altsysrq_c
+run_test crash_altsysrq_c
 

@@ -44,9 +44,6 @@ dump_fail_default_rootfs()
         echo "${K_DEFAULT_PATH}" > "${K_PATH}"
         validate_vmcore_exists "dmesg"
     fi
-    ready_to_exit
-
 }
 
-log_info "- Start"
-dump_fail_default_rootfs
+run_test dump_fail_default_rootfs

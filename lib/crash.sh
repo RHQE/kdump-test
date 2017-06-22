@@ -53,7 +53,7 @@ get_vmcore_path()
 
     [ -f "${K_PATH}" ] && vmcore_path=$(cat "${K_PATH}") || vmcore_path="${K_DEFAULT_PATH}"
 
-    [ -f "${K_NFS}" ] &&{
+    [ -f "${K_NFS}" ] && {
         local export_path
         export_path=$(cat "${K_NFS}")
         vmcore_path=${export_path}${vmcore_path}
@@ -63,16 +63,9 @@ get_vmcore_path()
         log_error "- Failed to find vmcore. ${vmcore_path} is not a directory"
     }
 
-    local find_cmd="find "\"${vmcore_path}\"" -newer "\"${K_CONFIG}\"" -name "\"${vmcore_name}\"" -type f"
-    count=$(eval "${find_cmd}" | wc -l)
-
     local vmcore_full_path
-    if [[ ${count} -gt 1 ]]; then
-        log_error "- More than one vmcore is found in ${vmcore_path}. Expect 1 or 0."
-    else
-        vmcore_full_path=$(eval "${find_cmd}")
-        echo "${vmcore_full_path}"
-    fi
+    vmcore_full_path=$(find "${vmcore_path}" -newer "${K_CONFIG}" -name "${vmcore_name}" -type f | sort -r | head -n 1)
+    echo "${vmcore_full_path}"
 }
 
 
@@ -91,11 +84,7 @@ validate_vmcore_exists()
     log_info "- Validate if ${vmcore_format:-vmcore} exists"
     vmcore_full_path=$(get_vmcore_path "${vmcore_format}")
 
-    if [ ! -z "${vmcore_full_path}" ]; then
-        log_info "- Found vmcore ${vmcore_format} file at ${vmcore_full_path}"
-    else
-        log_error "- No vmcore file is found."
-    fi
+    [ -z "${vmcore_full_path}" ] && log_error "- No vmcore file is found."
 
     # if vmcore format is not specified, check vmcore-dmesg as well.
     [[ -z ${vmcore_format} ]] && {
@@ -149,18 +138,24 @@ crash_cmd()
     local log_suffix
     [ -z "$core" ] && log_suffix=log || log_suffix="${core##*/}.log"
 
-    local retval
-
     [ -f "${crash_cmd_file}" ] || log_error "- No such file ${crash_cmd_file}."
 
+    local retval
     log_info "- # crash ${args} -i ${crash_cmd_file} ${vmx} ${core}"
     # The EOF part is a workaround of a crash utility bug - crash utility
     # session would fail during the initialization when invoked from a
     # script without a control terminal.
     # This issue has been fixed in crash 4.0-7.2.1
-    crash ${args} -i "${crash_cmd_file}" ${vmx} ${core} \
-        > "${crash_cmd_file}.${log_suffix}" 2>&1 <<EOF
+    if [ -z "${core}" ]; then
+        crash ${args} -i "${crash_cmd_file}"\
+            > "${crash_cmd_file}.${log_suffix}" 2>&1 <<EOF
 EOF
+    else
+        crash ${args} -i "${crash_cmd_file}" "${vmx}" "${core}" \
+            > "${crash_cmd_file}.${log_suffix}" 2>&1 <<EOF
+EOF
+    fi
+
     retval=$?
     report_file "${crash_cmd_file}"
     report_file "${crash_cmd_file}.${log_suffix}"
@@ -337,10 +332,15 @@ check_crash_output()
     local warn_found=${PIPESTATUS[2]}
     log_info "- WARNING MESSAGES END"
 
+    [ -f "${K_CRASH_REPORT}" ] && report_file "${K_CRASH_REPORT}"
 
-    if [[ ${error_found} -eq 0 || ${warn_found} -eq 0 ]]; then
-        report_file "${K_CRASH_REPORT}"
-        log_error "- Found errors/warnings in Crash commands. \
+    if [ ${warn_found} -eq 0 ]; then
+        log_warn "- Found warnings in Crash commands. \
+            See ${output_file} for more details."
+    fi
+
+    if [ ${error_found} -eq 0 ]; then
+        log_error "- Found errors in Crash commands. \
             See ${output_file} for more details."
     fi
 

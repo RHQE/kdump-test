@@ -26,6 +26,11 @@ readonly K_ERROR_FILE="./K_ERROR"
 readonly K_WARN_FILE="./K_WARN"
 readonly K_TEST_SUMMARY="../test_summary.log"
 
+C_RED=$(tput setaf 1)
+C_GREEN=$(tput setaf 2)
+C_YELLOW=$(tput setaf 3)
+C_RESET=$(tput sgr0)
+
 K_TEST_NAME=$(basename "$(pwd)")
 
 
@@ -38,7 +43,7 @@ is_beaker_env()
         . /usr/bin/rhts-environment.sh
         return 0
     else
-        log_info "- This is not executed in beaker."
+        #log_info "- This is not executed in beaker."
         return 1
     fi
 }
@@ -52,35 +57,28 @@ log()
 {
     local level="$1"
     shift
-    echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] $level $*" >> "${K_LOG_FILE}"
+
+    local color
     if [ "$level" == "ERROR" -o "$level" == "FATAL" ]; then
-        echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] $level $*" >&2
+        color=${C_RED}
+    elif [ "$level" == "WARN" ]; then
+        color=${C_YELLOW}
     else
-        echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] $level $*"
+        color=${C_GREEN}
+    fi
+
+    echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] [$level] $*" >> "${K_LOG_FILE}"
+
+    level_color=${level}
+    # Output colored log level if it's no in beaker
+    is_beaker_env || level_color="${color}$level${C_RESET}"
+
+    if [ "$level" == "ERROR" -o "$level" == "FATAL" ]; then
+        echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] [${level_color}] $*" >&2
+    else
+        echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] [${level_color}] $*"
     fi
 }
-
-
-# @usage: report_file <filename>
-# @description:
-#       upload file to beaker server if beaker env
-#       otherwise print it to console
-# @param1: filename
-report_file()
-{
-    local filename="$1"
-    if [ -f "${filename}" ]; then
-        if is_beaker_env; then
-            rhts-submit-log -l "$filename"
-        else
-            cat "${filename}"
-        fi
-    else
-        # if file doesn't exist.
-        log_warn "- File ${filename} doesn't exist!"
-    fi
-}
-
 
 # @usage: log_info <mesg>
 # @description: log INFO message
@@ -97,6 +95,7 @@ log_warn()
 {
     log "WARN" "$@"
     printf n >> "${K_WARN_FILE}"
+    sync
 }
 
 # @usage: log_error <mesg>
@@ -106,6 +105,7 @@ log_error()
 {
     log "ERROR" "$@"
     printf n >> "${K_ERROR_FILE}"
+    sync
     ready_to_exit
 }
 
@@ -127,11 +127,36 @@ log_fatal()
         rhts-abort -t recipeset
         exit ${code}
     else
-        log_info "- [${result}] Please check test logs!"
+        log "ERROR" "- ${K_TEST_NAME} result: ${result}. Please check log ${K_LOG_FILE}!"
         exit $code
     fi
 }
 
+# @usage: report_file <filename>
+# @description:
+#       upload file to beaker server if beaker env
+#       otherwise print it to console
+# @param1: filename
+# @param2: if_print if print the content of file to console.
+#        if_print=true by default.
+report_file()
+{
+    local filename="$1"
+    local if_print="${2:-true}"
+
+    if [ ! -f "${filename}" ]; then
+        log_warn "- File ${filename} doesn't exist!"
+        return
+    fi
+
+    if is_beaker_env; then
+        rhts-submit-log -l "$filename"
+    elif [ "${if_print}" == "true" ]; then
+        cat "${filename}"
+    else
+        log_info "- File ${filename} is saved for reporting."
+    fi
+}
 
 # @usage: ready_to_exit <exit_code>
 # @description:
@@ -140,7 +165,8 @@ log_fatal()
 #       will be fetched from K_ERROR_FILE and K_WARN_FILE
 ready_to_exit()
 {
-    report_file "${K_LOG_FILE}"
+    # upload test result file but not print to console.
+    report_file "${K_LOG_FILE}" false
 
     local result
     local code
@@ -166,10 +192,10 @@ ready_to_exit()
         exit
     else
         if [ "${result}" != "PASS" ]; then
-            log_info "- [${result}] Please check test logs!"
+            log "ERROR" "- ${K_TEST_NAME} result: ${result}. Please check log ${K_LOG_FILE}!"
             exit $code
         else
-            log_info "- [${result}] Tests finished successfully!"
+            log "INFO" "- ${K_TEST_NAME} result: ${result}."
             exit 0
         fi
     fi

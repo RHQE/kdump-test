@@ -24,10 +24,8 @@
 # @description: report hardware info
 report_hw_info()
 {
-    echo -e "Architecture:" >> "${K_HWINFO_FILE}"
-    arch >> "${K_HWINFO_FILE}"
+    log_info "- Reporting system hardware info:"
 
-    echo -e "\n----\n"      >> "${K_HWINFO_FILE}"
     echo -e "CPU Info:"     >> "${K_HWINFO_FILE}"
     lscpu >> "${K_HWINFO_FILE}"
 
@@ -51,11 +49,11 @@ report_hw_info()
 }
 
 
-# @description: report file list in initrd*kdump.img
+# @description: report file list in initramfs*kdump.img
 report_lsinitrd()
 {
-    INITRAMFS_SUFFIX="$(uname -r)kdump.img"
-    INITRAMFS_NAME=$(ls /boot | grep "${INITRAMFS_SUFFIX}")
+    log_info "- Reporting the file list in initramfs*kdump.img:"
+    INITRAMFS_NAME=$(ls /boot | grep "$(uname -r)kdump.img")
     lsinitrd "/boot/${INITRAMFS_NAME}" >> "${K_INITRAMFS_LIST}"
     report_file "${K_INITRAMFS_LIST}"
 }
@@ -68,6 +66,15 @@ report_system_info()
     log_info "- Reporting system info."
     report_hw_info
     report_lsinitrd
-    report_file "${K_CONFIG}"
-    report_file "${K_SYS_CONFIG}"
+
+    log_info "- Reporting kdump config"
+    grep -v ^# "${K_CONFIG}" | grep -v ^$ > ./kdump.config
+    report_file ./kdump.config
+
+    log_info "- Reporting kdump sys config"
+    grep -v ^# "${K_SYS_CONFIG}" | grep -v ^$ > ./kdump.sysconfig
+    report_file ./kdump.sysconfig
+
+    rm ./kdump.config
+    rm ./kdump.sysconfig
 }

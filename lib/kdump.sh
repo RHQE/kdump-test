@@ -49,7 +49,6 @@ K_BAK_DIR="${TESTAREA}/bk"
 
 K_REBOOT="${K_TMP_DIR}/K_REBOOT"
 C_REBOOT="./C_REBOOT"
-D_REBOOT="${K_TMP_DIR}/D_REBOOT"
 
 # KDUMP-PATH stores the full path to vmcore files.
 # e.g. cat KDUMP-PATH: ${MP%/}${KPATH}
@@ -87,13 +86,15 @@ backup_files()
 
 
 # @usage: install_rpm <pkg> <pkg>
-# @description: install rpm packages
+# @description: install rpm packages if they are not installed
 # @param1: list of pkg
 install_rpm()
 {
+    log_info "- Installing rpm(s) $*"
+
     if [[ $# -gt 0 ]]; then
         for pkg in $@; do
-            rpm -q $pkg || yum install -y $pkg || log_error "- Install package $pkg failed!"
+            rpm -q "$pkg" || yum install -y "$pkg" || log_error "- Install package $pkg failed!"
         done
         log_info "- Installed $* successfully"
     fi
@@ -101,24 +102,24 @@ install_rpm()
 
 
 # @usage: install_rpm <pkg> <repo>
-# @description: install rpm package from the repo
+# @description: install a rpm package from a repo
 # @param1: pkg
 # @param2: repo
-# @param3: opt  # install or upgrade. default to install
 install_rpm_from_repo()
 {
-    local cmd=yum
+    log_info "- Installing a rpm from a repo."
 
-    dnf --verion && cmd=dnf
-
-    if [[ $# -ge 2 ]]; then
-        local pkg=$1
-        local repo=$2
-        local opt=${3:-"install"}
-        $cmd ${opt} -y --enablerepo=$repo $pkg
-        [[ $? -ne 0  ]] && log_error "- Install/upgrade package $pkg from $repo failed!"
-        log_info "- Installed/upgraded $pkg from $repo successfully"
+    if [ $# -lt 2 ]; then
+        log_error "- Expecting pkg and repo name. But got $# args only."
     fi
+
+    local pkg=$1
+    local repo=$2
+
+    rpm -q "$pkg" || yum install -y --enablerepo=$repo "$pkg" || \
+        log_error "- Install package $pkg from $repo failed!"
+
+    log_info "- Installed/upgraded $pkg from $repo successfully"
 }
 
 
@@ -177,22 +178,20 @@ multihost_prepare()
 # @description: install required packakges for crash test
 crash_prepare()
 {
-    [ -f ${D_REBOOT} ] && return
-
+    # The version of kernel-debuginfo to be installed must be same as
+    # the version of current kernel.
+    # if not, exit with error as it cannot be used for crash analysis.
     if [[ "${K_DIST_NAME}" == "fc" ]]; then
-        before=$(dnf list installed kernel | wc -l)
+        ret_value=$(yum list --enablerepo=updates-debuginfo kernel-debuginfo \
+            | grep kernel-debuginfo \
+            | awk '{print $2}'
+        )
 
-        install_rpm_from_repo kernel updates-debuginfo upgrade
+        [ "${ret_value}.${K_ARCH}" ==  "$(uname -r)" ] || \
+            log_error "- Cannot find kernel-debuginfo.$(uname -r) in repo updates-debuginfo."
+
         install_rpm_from_repo kernel-debuginfo updates-debuginfo
         install_rpm crash
-
-        after=$(dnf list installed kernel | wc -l)
-
-        [[ "$after" > "$before" ]] && {
-            touch ${D_REBOOT}
-            sync
-            reboot_system
-        }
     else
         install_rpm kernel-debuginfo crash
     fi
@@ -204,10 +203,6 @@ crash_prepare()
 kdump_prepare()
 {
     if [ ! -f "${K_REBOOT}" ]; then
-        # install crash/kernel-debuginfo
-        # upgrade kernel if needed.
-        crash_prepare
-
         # install kexec-tools package
         install_rpm kexec-tools
 
@@ -237,10 +232,10 @@ kdump_prepare()
         # kernel param to crashkernel=<>M, and reboot system.
 
         grep -q 'crashkernel' <<< "${KERARGS}" || {
+                log_info "- Checking if crash memory is reserved from /sys/kernel/kexec_crash_size"
                 [ "$(cat /sys/kernel/kexec_crash_size)" -eq 0 ] && {
-                    log_info "# cat /sys/kernel/kexec_crash_size"
                     log_info "- Crash memory is not reserved."
-                    log_info "- MemTotal is:" "$(grep MemTotal /proc/meminfo)"
+                    log_info "- $(grep MemTotal /proc/meminfo)"
                     KERARGS+=" $(get_kdump_mem)"
                 }
         }
@@ -248,22 +243,21 @@ kdump_prepare()
         [ "${KERARGS}" ] && {
             # K_REBOOT is to mark system's been rebooted for kernel cmdline change.
             touch "${K_REBOOT}"
-            log_info "- Changing boot loader."
+            log_info "- Changing boot loader: ${KERARGS}"
             {
                 /sbin/grubby    \
                     --args="${KERARGS}"    \
                     --update-kernel="${default}" &&
                 if [ "${K_ARCH}" = "s390x" ]; then zipl; fi
             } || {
-                log_error "- Change boot loader error!"
+                log_error "- Changing boot loader failed!"
             }
             log_info "- Reboot system for system preparing."
             reboot_system
         }
     fi
 
-    # check again if memory is reserved for kdump.
-    # if not, print out cmdline and exit.
+    # exit with error if there is still no crash memory reserved for kdump.
     if [ "$(cat /sys/kernel/kexec_crash_size)" -eq 0 ]; then
         log_info "- Kernel Boot Cmdline is: $(cat /proc/cmdline)"
         log_error "- No memory is reserved for crashkernel!"
@@ -607,9 +601,6 @@ trigger_crasher()
 run_test()
 {
     func=$1
-
-    warn=0
-    error=0
 
     log_info "- Start"
 

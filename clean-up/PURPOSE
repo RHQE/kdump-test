@@ -1,0 +1,3 @@
+This case is to remove all timestamps, temporary files and vmcores from previous
+test cases. It is often run as the last step in a test sequence, so the
+machine would be ready to run the next test case.

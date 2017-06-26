@@ -1,0 +1,1 @@
+It uses crash utility to analyse kernel status in a vmcore dumped after system crash.

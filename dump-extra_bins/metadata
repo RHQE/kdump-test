@@ -1,0 +1,9 @@
+[General]
+name=/kdump-test/dump-extra_bins
+owner="Qiao Zhao"
+description="kdump-test for dump-extra_bins"
+
+[restraint]
+entry_point=./runtest.sh
+repoRequires=lib
+use_pty=true

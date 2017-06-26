@@ -13,7 +13,7 @@ post="kdump-post"
 cat > "/bin/${pre}.sh" <<EOF
 #!/bin/$shbang
 
-echo "${pre}.sh: touching /root/${pre}.log"
+echo "Executing ${pre}.sh. See log in /root/${pre}.log"
 
 dir=\$(grep -m1 $root /proc/mounts | cut -d' ' -f2)
 tdir=/mnt/tmp
@@ -25,7 +25,7 @@ else
     mount --rbind \$dir \$tdir
     mount -o remount,rw \$tdir
 fi
-echo "${pre}.sh: kdump pre script." >\$tdir/root/${pre}.log
+echo "${pre}.sh: kdump pre script." >> \$tdir/root/${pre}.log
 sync
 umount \$tdir
 sleep 5
@@ -34,9 +34,8 @@ EOF
 cat > "/bin/${post}.sh" <<EOF
 #!/bin/$shbang
 
+echo "Executing ${post}.sh. See log in /root/${post}.log"
 dump_result=\$1
-echo "${post}.sh: dump result \$dump_result"
-echo "${post}.sh: touching /root/$post.log"
 
 dir=\$(grep -m1 $root /proc/mounts | cut -d' ' -f2)
 tdir=/mnt/tmp
@@ -48,7 +47,7 @@ else
     mount -o remount,rw \$tdir
 fi
 
-echo "${post}.sh: dump result \$dump_result" > \$tdir/root/${post}.log
+echo "${post}.sh: dump result \$dump_result" >> \$tdir/root/${post}.log
 sync
 umount \$tdir
 sleep 5

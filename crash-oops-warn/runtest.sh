@@ -32,6 +32,8 @@ crash-oops-warn()
         echo 1 > /proc/sys/kernel/panic_on_warn
         [[ $? -ne 0 ]] && log_error "- Error to echo 1 > /proc/sys/kernel/panic_on_warn"
 
+        reset_efiboot
+
         # Trigger panic_on_warn
         touch "${C_REBOOT}"
         sync

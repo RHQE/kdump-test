@@ -209,8 +209,25 @@ reboot_system()
     sync
 
     if is_beaker_env; then
+        # Config next boot if uefi
+        reset_efiboot
+
         rhts-reboot
     else
         reboot
     fi
+}
+
+# @usage: reset_efiboot
+# @description: set efi next boot option as current
+reset_efiboot()
+{
+    which efibootmgr && {
+        local boot_current
+        boot_current=$(efibootmgr | grep -i BootCurrent | awk  '{print $2}')
+        log_info "- Updating NextBoot in efibootmgr to ${boot_current}"
+        efibootmgr -n ${boot_current} || {
+            log_error "- Command 'efibootmgr -n ${boot_current}' failed!"
+        }
+    }
 }

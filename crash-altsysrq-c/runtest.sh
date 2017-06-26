@@ -30,6 +30,8 @@ crash_altsysrq_c()
         make_module "altsysrq" .
         insmod ./altsysrq/altsysrq.ko || log_error "- Fail to insmod altsysrq."
 
+        reset_efiboot
+
         touch "${C_REBOOT}"
         sync
         log_info "- Triggering crash."

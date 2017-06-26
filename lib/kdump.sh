@@ -560,6 +560,9 @@ trigger_sysrq_crash()
 {
     touch "${C_REBOOT}"
     sync;sync;sync
+
+    reset_efiboot
+
     log_info "- Triggering crash."
     echo c > /proc/sysrq-trigger
 
@@ -579,9 +582,14 @@ trigger_crasher()
 
     local opt=$1
     touch "${C_REBOOT}"
+
+    reset_efiboot
+
     # enable panic_on_oops
     echo 1 > /proc/sys/kernel/panic_on_oops
     sync;sync;sync
+
+
 
     log_info "- Triggering crash."
     # opt=0 : panic()

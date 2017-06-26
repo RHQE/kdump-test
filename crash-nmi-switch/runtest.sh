@@ -33,6 +33,8 @@ crash_nmi_switch()
         systemctl enable ipmi
         systemctl start ipmi || service ipmi start || log_error "- Failed to start ipmi service."
 
+        reset_efiboot
+
         echo 1 > /proc/sys/kernel/panic_on_unrecovered_nmi
         touch "${C_REBOOT}"
         sync

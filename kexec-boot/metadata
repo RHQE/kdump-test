@@ -1,0 +1,9 @@
+[General]
+name=/kdump-test/kexec-boot
+owner="Qiao Zhao"
+description="kexec boot to new kernel."
+
+[restraint]
+entry_point=./runtest.sh
+repoRequires=lib
+use_pty=true

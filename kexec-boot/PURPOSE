@@ -1,0 +1,3 @@
+Kexec is a fastboot mechanism which allows booting a Linux kernel from the
+context of already running kernel without going through BIOS.
+This case will cover some kexec testing.

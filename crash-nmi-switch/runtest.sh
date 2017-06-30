@@ -36,10 +36,13 @@ crash_nmi_switch()
         reset_efiboot
 
         echo 1 > /proc/sys/kernel/panic_on_unrecovered_nmi
+        echo 1 > /proc/sys/kernel/unknown_nmi_panic
+        echo 1 > /proc/sys/kernel/panic
+
         touch "${C_REBOOT}"
         sync
         log_info "- Triggering crash."
-        ipmitool chassis power diag
+        ipmitool power diag
 
         # Wait for a while
         sleep 60

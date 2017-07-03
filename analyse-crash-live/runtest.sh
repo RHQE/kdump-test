@@ -158,7 +158,7 @@ exit
 EOF
     fi
 
-    export SKIP_ERROR_PAT="kmem:.*error.*encountered"
+    export SKIP_ERROR_PAT="kmem:.*error.*encountered\|kmem:.*slab.*invalid freepointer.*"
     crash_cmd "" "" "" "${K_TMP_DIR}/crash-simple.cmd"
     crash_cmd "" "" "" "${K_TMP_DIR}/crash.cmd" check_crash_output
 }

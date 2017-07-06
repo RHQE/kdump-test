@@ -106,7 +106,6 @@ pte d8e067
 swap
 dis sys_signal
 kmem -i
-kmem -s
 sym -q pipe
 ptob 512a
 eval (1 << 32)
@@ -161,6 +160,7 @@ EOF
     export SKIP_ERROR_PAT="kmem:.*error.*encountered\|kmem:.*slab.*invalid freepointer.*"
     crash_cmd "" "" "" "${K_TMP_DIR}/crash-simple.cmd"
     crash_cmd "" "" "" "${K_TMP_DIR}/crash.cmd" check_crash_output
+    export SKIP_ERROR_PAT=""
 }
 
 run_test analyse_live

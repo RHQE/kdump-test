@@ -63,6 +63,9 @@ K_PREFIX_FWD="${K_INF_DIR}/FIREWALLD"
 K_PREFIX_IPT="${K_INF_DIR}/IPTABLES"
 K_PREFIX_SSH="${K_INF_DIR}/SSHD_ENABLE"
 
+MD_DEVICE="${MD_DEVICE:-/dev/md0}"
+RAID_DEVICES="${RAID_DEVICES:-}"
+
 readonly K_EXPORT="/mnt/testarea/nfs"
 readonly K_LOCK_AREA="/root"
 readonly K_LOCK_SSH_ID_RSA="${K_LOCK_AREA}/.ssh/id_rsa_kdump"
@@ -116,7 +119,7 @@ install_rpm_from_repo()
     local pkg=$1
     local repo=$2
 
-    rpm -q "$pkg" || yum install -y --enablerepo=$repo "$pkg" || \
+    rpm -q "$pkg" || yum install -y --enablerepo="$repo" "$pkg" || \
         log_error "- Install package $pkg from $repo failed!"
 
     log_info "- Installed/upgraded $pkg from $repo successfully"
@@ -551,6 +554,107 @@ config_kdump_sysconfig()
     kdump_restart
 }
 
+# @usage: config_sw_raid
+# @description: config software raid
+# @global param1: RAID_DEVICES  # devices to create a RAID
+# @global param2: RAID_LEVEL  # valid values: 0,1,5
+config_sw_raid()
+{
+    local device_name=("")
+    local count=0
+    local expect_count=0
+
+    for i in $RAID_DEVICES; do
+        device_name[$count]=$(findmnt -kcno SOURCE "$i")
+        (( count++ ))
+    done
+
+    log_info "- The ready disk(s): ${device_name[*]}"
+
+    # validate RAID_DEVICE and RAID_LEVEL
+    if [ "${RAID_LEVEL}" -eq 0 -o "${RAID_LEVEL}" -eq 1 ]; then
+        expect_count=2
+    elif [ "${RAID_LEVEL}" -eq 5 ]; then
+        expect_count=3
+    else
+        log_error "- Invalid raid level: $RAID_LEVEL"
+    fi
+
+    [ "${count}" -lt "${expect_count}" ] && {
+        log_error "- Expect ${expect_count} devices for raid${RAID_LEVEL}. \
+But only ${count} provided."
+    }
+
+    # release disk before create raid devices
+    for i in "${device_name[@]}"; do
+        umount "$i"
+    done
+
+    log_info "- Creating raid${RAID_LEVEL} devices."
+    release_md_device
+    case $RAID_LEVEL in
+        0)
+            mdadm --create "${MD_DEVICE}" --run --level raid0 --raid-devices 2 "${device_name[0]}" "${device_name[1]}"
+            [ $? != 0 ] && log_error "- Create raid0 failed."
+            mdadm --detail "${MD_DEVICE}"
+            ;;
+        1)
+            mdadm --create "${MD_DEVICE}" --run --level raid1 --raid-devices 2 "${device_name[0]}" "${device_name[1]}"
+            [ $? != 0 ] && log_error "- Create raid1 failed."
+            mdadm --detail "${MD_DEVICE}"
+            ;;
+        5)
+            mdadm --create "${MD_DEVICE}" --run --level raid5 --raid-devices 3 "${device_name[0]}" "${device_name[1]}" "${device_name[2]}"
+            [ $? != 0 ] && log_error "- Create raid5 failed."
+            mdadm --detail "${MD_DEVICE}"
+            ;;
+        *)
+            log_error "- Invalid raid level: $RAID_LEVEL"
+            ;;
+    esac
+
+    mkfs.ext4 "${MD_DEVICE}" > /dev/null
+    mkdir -p "$MP"
+    mount "${MD_DEVICE}" "$MP" || log_error "- Failed to mount ${MD_DEVICE} $MP."
+    save_md_config
+}
+
+# @usage: release_md_device
+# @description: release md device $MD_DEVICE if it's in use.
+# global param1: MD_DEVICE # default to /dev/md0
+release_md_device()
+{
+    mdadm --detail "${MD_DEVICE}" || {
+        log_info "- ${MD_DEVICE} is availiable!"
+        return
+    }
+
+    Log "- Releasing ${MD_DEVICE}"
+    {
+        mdadm --stop "${MD_DEVICE}"
+        Log " - ${MD_DEVICE} is availabile now!"
+    }
+}
+
+# @usage: save_md_config
+# @description: save mdadm config and update device mountings
+# global param1: RAID_DEVICE # devices to create a RAID
+save_md_config()
+{
+    log_info "- Saving mdadm config to /etc/mdadm.conf"
+    mdadm -E -s -v >> /etc/mdadm.conf
+    report_file /etc/mdadm.conf
+
+    log_info "- Adding ${MD_DEVICE} to /etc/fstab"
+
+    for i in $RAID_DEVICES; do
+        sed -i "\#$i#d" /etc/fstab
+    done
+
+    echo "${MD_DEVICE}  $MP         ext4    defaults    0   0" >> /etc/fstab
+    report_file /etc/fstab
+}
+
 
 ###  Triggering Crash ###
 
@@ -588,8 +692,6 @@ trigger_crasher()
     # enable panic_on_oops
     echo 1 > /proc/sys/kernel/panic_on_oops
     sync;sync;sync
-
-
 
     log_info "- Triggering crash."
     # opt=0 : panic()

@@ -1,0 +1,9 @@
+[General]
+name=/kdump-test/dump-sw-raid
+owner="Qiao Zhao"
+description="kdump-test for dumping to a software raid target"
+
+[restraint]
+entry_point=./runtest.sh
+repoRequires=lib
+use_pty=true

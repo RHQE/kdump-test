@@ -318,6 +318,8 @@ kdump_restart()
 
     /usr/bin/kdumpctl restart 2>&1 || /sbin/service kdump restart 2>&1 || log_error "- Failed to start kdump!"
     log_info "- Kdump service starts successfully."
+
+    sync; sync; sleep 10
 }
 
 

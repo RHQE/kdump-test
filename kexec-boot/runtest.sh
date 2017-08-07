@@ -26,6 +26,8 @@ KEXEC_VER=${KEXEC_VER:-"$(uname -r)"}
 kexec_boot()
 {
     if [ ! -f "${C_REBOOT}" ]; then
+        install_rpm kexec-tools
+
         touch "${C_REBOOT}"
         report_system_info
         # load new kernel

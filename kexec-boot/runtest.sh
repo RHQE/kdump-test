@@ -39,7 +39,7 @@ kexec_boot()
         if [ -f /sys/kernel/security/securelevel ]; then
             local securelevel=$(cat /sys/kernel/security/securelevel)
             log_info "- Secureboot is enabled."
-            [ "$securelevel" == "1" ] && cmd="${cmd}+ -s"
+            [ "$securelevel" == "1" ] && cmd="${cmd} -s"
         fi
 
         ${cmd} /boot/vmlinuz-"$KEXEC_VER" --initrd=/boot/initramfs-"$KEXEC_VER".img --command-line="${cmdline}"

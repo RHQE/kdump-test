@@ -203,8 +203,11 @@ crash_prepare()
 
 # @usage: kdump_prepare
 # @description: to make sure crash mem is reserved and kdump is started.
+# @param1: options # valid values: empty of fadump
 kdump_prepare()
 {
+    local opt=$1
+
     if [ ! -f "${K_REBOOT}" ]; then
         # install kexec-tools package
         install_rpm kexec-tools
@@ -234,14 +237,16 @@ kdump_prepare()
         # If it is not supported, we need to specify the memory by changing
         # kernel param to crashkernel=<>M, and reboot system.
 
-        grep -q 'crashkernel' <<< "${KERARGS}" || {
-                log_info "- Checking if crash memory is reserved from /sys/kernel/kexec_crash_size"
-                [ "$(cat /sys/kernel/kexec_crash_size)" -eq 0 ] && {
-                    log_info "- Crash memory is not reserved."
-                    log_info "- $(grep MemTotal /proc/meminfo)"
-                    KERARGS+=" $(get_kdump_mem)"
-                }
-        }
+        if [ "${opt}" != "fadump" ]; then
+            grep -q 'crashkernel' <<< "${KERARGS}" || {
+                    log_info "- Checking if crash memory is reserved from /sys/kernel/kexec_crash_size"
+                    [ "$(cat /sys/kernel/kexec_crash_size)" -eq 0 ] && {
+                        log_info "- Crash memory is not reserved."
+                        log_info "- $(grep MemTotal /proc/meminfo)"
+                        KERARGS+=" $(get_kdump_mem)"
+                    }
+            }
+        fi
 
         [ "${KERARGS}" ] && {
             # K_REBOOT is to mark system's been rebooted for kernel cmdline change.
@@ -261,9 +266,25 @@ kdump_prepare()
     fi
 
     # exit with error if there is still no crash memory reserved for kdump.
-    if [ "$(cat /sys/kernel/kexec_crash_size)" -eq 0 ]; then
-        log_info "- Kernel Boot Cmdline is: $(cat /proc/cmdline)"
-        log_error "- No memory is reserved for crashkernel!"
+    if [ "${opt}" != "fadump" ]; then
+        local mem_reserved=$(cat /sys/kernel/kexec_crash_size)
+
+        if [ "${mem_reserved}" -eq 0 ]; then
+            log_info "- Kernel Boot Cmdline is: $(cat /proc/cmdline)"
+            log_error "- No memory is reserved for crashkernel!"
+        else
+            log_info "- Crash memory with size ${mem_reserved} is reserved for kdump."
+        fi
+    else
+        local mem_reserved=$(dmesg | grep "firmware-assisted dump" | grep "Reserved")
+        [ "${mem_reserved}" == "" ] && {
+           log_error "- No memory is reserved for fadump!"
+        }
+        if [ "$(cat /sys/kernel/kexec_crash_size)" -ne 0 ]; then
+            log_info "# cat /sys/kernel/kexec_crash_size: $(cat /sys/kernel/kexec_crash_size)"
+            log_error "- kexec_crash_size should be 0 when fadump is active!"
+        fi
+        log_info "- Crash memory is reserved for fadump."
     fi
 
     # enable sysrq

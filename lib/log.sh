@@ -207,7 +207,7 @@ ready_to_exit()
 reboot_system()
 {
     sync
-
+    log_info "- Rebooting system."
     if is_beaker_env; then
         # Config next boot if uefi
         reset_efiboot
@@ -222,14 +222,17 @@ reboot_system()
 # @description: set efi next boot option as current
 reset_efiboot()
 {
+    log_info "- Checking and setting efibootmgr NextBoot option."
     which efibootmgr && {
         local boot_current
         boot_current=$(efibootmgr | grep -i BootCurrent | awk  '{print $2}')
         if [ -n ${boot_current} ]; then
-            log_info "- Updating NextBoot in efibootmgr to ${boot_current}"
+            log_info "- Setting NextBoot in efibootmgr to ${boot_current}"
             efibootmgr -n ${boot_current} || {
                 log_error "- Command 'efibootmgr -n ${boot_current}' failed!"
             }
+        else
+            log_info "- Not efi boot."
         fi
     }
 }

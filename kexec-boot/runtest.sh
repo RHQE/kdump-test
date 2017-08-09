@@ -30,20 +30,29 @@ kexec_boot()
 
         touch "${C_REBOOT}"
         report_system_info
+
         # load new kernel
-        kexec -l /boot/vmlinuz-"$KEXEC_VER" --initrd=/boot/initramfs-"$KEXEC_VER".img --reuse-cmdline --append="rd.memdebug=3 earlyprintk=serial"
-        [ "$(cat /sys/kernel/kexec_loaded)" = "0" ] && log_error "- Load new kernel failed."
+        local cmdline="$(cat /proc/cmdline) rd.memdebug=3 earlyprintk=serial"
+        local cmd="kexec -l"
+
+        # if secureboot is enabled
+        if [ -f /sys/kernel/security/securelevel ]; then
+            local securelevel=$(cat /sys/kernel/security/securelevel)
+            log_info "- Secureboot is enabled."
+            [ "$securelevel" == "1" ] && cmd="${cmd}+ -s"
+        fi
+
+        ${cmd} /boot/vmlinuz-"$KEXEC_VER" --initrd=/boot/initramfs-"$KEXEC_VER".img --command-line="${cmdline}"
+        [ "$(cat /sys/kernel/kexec_loaded)" = "0" ] && log_error "- Loading new kernel failed."
+
         log_info "- Load new kernel $KEXEC_VER successful."
-        log_info "- Kexec reboot to new kernel $KEXEC_VER"
+        log_info "- Kexec rebooting to new kernel $KEXEC_VER."
         reboot_system
-        sleep 60 && log_error "- The program should not be executed here."
+        sleep 60 && log_error "- Failed to reboot to new kernel $KEXEC_VER."
     else
         rm -f "${C_REBOOT}"
-        grep "rd.memdebug=3" /proc/cmdline && {
-            log_info "- Kexec boot to new kernel $KEXEC_VER successful."
-        } || {
-            log_error "- Kexec boot failed."
-        }
+        grep "rd.memdebug=3" /proc/cmdline || log_error "- Kexec boot failed."
+        log_info "- Kexec boot to new kernel $KEXEC_VER successfully."
     fi
 }
 

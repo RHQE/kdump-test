@@ -51,15 +51,15 @@ report_hw_info()
 
 # @usage: report_lsinitrd
 # @description: report file list in initramfs*kdump.img
-# @param1: img_key # default to "kdump.img"
+# @param1: img_key # kdump.img or .img. defaults to "kdump.img"
 report_lsinitrd()
 {
     local img_key=${1:-"kdump.img"}
 
-    log_info "- Reporting the file list in initramfs*${img_key}:"
+    log_info "- Reporting the file list in $(uname -r)${img_key}:"
 
     local initramfs_name=$(ls /boot | grep "$(uname -r)${img_key}")
-    [ -z "${initramfs_name}" ] && log_warn "- No initramfs*${img_key} is found."
+    [ -z "${initramfs_name}" ] && log_warn "- No kdump initramfs img is found."
 
     lsinitrd "/boot/${initramfs_name}" >> "${K_INITRAMFS_LIST}"
     report_file "${K_INITRAMFS_LIST}"
@@ -68,7 +68,6 @@ report_lsinitrd()
 
 # @usage: report_system_info
 # @description: report system info inclufing hw/initrd/kdump.config
-# @param1:fadump (optional) # fadump is using initramfs*.img, not initramfs*kdump.img
 report_system_info()
 {
     local opt=${1}
@@ -76,10 +75,10 @@ report_system_info()
     log_info "- Reporting system info."
     report_hw_info
 
-    if [ "${opt}" == "fadump" ]; then
+    if grep -q "fadump=on" < /proc/cmdline; then
         report_lsinitrd ".img"
     else
-        report_lsinitrd
+        report_lsinitrd "kdump.img"
     fi
 
     log_info "- Reporting kdump config"

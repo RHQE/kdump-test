@@ -35,7 +35,7 @@ crash_fadump()
             KERARGS+=" fadump=on"
         }
         kdump_prepare fadump
-        report_system_info fadump
+        report_system_info
 
         [ "$(cat /sys/kernel/fadump_enabled)" == "1" ] || log_error "- Fadump is not enabled!"
         [ "$(cat /sys/kernel/fadump_registered)" == "1" ] || log_error "- Fadump is not registered!"

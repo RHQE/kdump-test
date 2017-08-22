@@ -32,6 +32,8 @@ K_SSH_CONFIG="${HOME}/.ssh/config"
 K_SYS_CONFIG="/etc/sysconfig/kdump"
 K_SCRIPT="../lib/gen-helper-script"
 
+NETWORK_CONFIG="/etc/sysconfig/network-scripts/"
+
 # Test Parameters:
 KDEBUG=${KDEBUG:-"false"}
 TESTARGS=${TESTARGS:-}

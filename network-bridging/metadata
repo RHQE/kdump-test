@@ -1,0 +1,9 @@
+[General]
+name=/kdump-test/network-bridging
+owner="Qiao Zhao"
+description="kdump-test for network-bridging"
+
+[restraint]
+entry_point=./runtest.sh
+repoRequires=lib
+use_pty=true

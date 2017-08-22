@@ -15,16 +15,58 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Author: Song Qihan <qsong@redhat.com>
-# Update: Qiao Zhao <qzhao@redhat.com>
+# Author: Xiaowu Wu <xiawu@redhat.com>
 
-. ../lib/kdump.sh
 . ../lib/kdump_multi.sh
 . ../lib/kdump_report.sh
 . ../lib/crash.sh
 
+bridging_prepare()
+{
+    install_rpm bridge-utils
+
+    local eth="$(ip route | grep default | awk '{print $5}')"
+    local eth_config="${NETWORK_CONFIG}/ifcfg-${eth}"
+    local br=br0
+    local br_config="${NETWORK_CONFIG}/ifcfg-${br}"
+
+    log_info "- Adding ${br_config}"
+    cat <<EOF > "${br_config}"
+DEVICE=br0
+TYPE=Bridge
+NM_CONTROLLED=no
+BOOTPROTO=dhcp
+ONBOOT=yes
+EOF
+    report_file "${br_config}"
+
+    log_info "- Updating ${eth_config}"
+    sed -i "/^${BOOTPROTO=*} /d" "${eth_config}"
+    sed -i "/^${BRIDGE=*} /d" "${eth_config}"
+    sed -i "/^${NM_CONTROLLED=*} /d" "${eth_config}"
+    echo "BOOTPROTO=none" >> "${eth_config}"
+    echo "BRIDGE=br0" >> "${eth_config}"
+    echo "NM_CONTROLLED=no" >> "${eth_config}"
+    report_file "${eth_config}"
+
+    sync;sync;sync
+
+    log_info "- Restarting network"
+    systemctl restart network 2>&1 || service network restart  2>&1
+    [ $? -eq 0 ] || log_error "- Failed to restart network!"
+
+    log_info "- Checking bridge status"
+    brctl show | grep "$br" | grep "$eth" || {
+        log_info $(brctl show)
+        log_error "- Failed to set up a bridge."
+    }
+
+}
+
+
 # This is a mutli-host tests has to be ran on both Server/Client.
-ssh_sysrq_test()
+# Test to dump to nfs server via bridged network
+dump_bridging()
 {
     if [ -z "${SERVERS}" -o -z "${CLIENTS}" ]; then
         log_error "No Server or Client hostname"
@@ -37,9 +79,10 @@ ssh_sysrq_test()
     if [[ ! -f "${C_REBOOT}" ]]; then
         kdump_prepare
         multihost_prepare
-        config_ssh
+        config_nfs
 
         if [[ $(get_role) == "client" ]]; then
+            bridging_prepare
             kdump_restart
             report_system_info
 
@@ -50,17 +93,22 @@ ssh_sysrq_test()
             log_error "- Failed to trigger crash."
 
         elif [[ $(get_role) == "server" ]]; then
-            log_info "- Waiting at ${done_sync_port} for signal from client that test/crash is done."
+            log_info "- Waiting for signal that test is done at client."
             wait_for_signal ${done_sync_port}
-
-            log_info "- Checking vmcore on ssh server."
-            validate_vmcore_exists flat
         fi
     else
         rm -f "${C_REBOOT}"
-        log_info "- Notifying server that crash is done at client."
+        copy_nfs
+        local retval=$?
+
+        log_info "- Notifying server that test is done at client."
         send_notify_signal "${SERVERS}" ${done_sync_port}
+
+        [ ${retval} -eq 0 ] || log_error "- Failed to copy vmcore"
+
+        validate_vmcore_exists
     fi
 }
 
-run_test ssh_sysrq_test
+run_test dump_bridging
+

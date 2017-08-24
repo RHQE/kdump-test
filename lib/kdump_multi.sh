@@ -202,6 +202,8 @@ config_ssh()
         log_error "- ${ip_version} is not supported. Onlyl ipv4 or ipv6 is supported."
     }
 
+    echo "${KPATH}/${client}" > "${K_PATH}"
+
     if [[ $(get_role) == "client" ]]; then  # copy keys
         ## Note:
         ## if client exits with error during config. It must notify server.
@@ -380,6 +382,25 @@ copy_nfs()
     cp -r "/mnt/tmp${vmcore_path}/"* "${export_path}${vmcore_path}" || return 1
 
     umount "/mnt/tmp"
+}
+
+
+# @usage: copy_ssh
+# @description:
+#       Copy vmcore from ssh server to client at exact same place
+#       as it's on server
+copy_ssh()
+{
+    local client=${CLIENTS}
+    local server=${SERVERS}
+
+    local vmcore_path=${K_DEFAULT_PATH}
+    [ -f "${K_PATH}" ] && vmcore_path=$(cat "${K_PATH}")
+
+
+    log_info "- Copying vmcore to from ssh server to ssh client"
+    mkdir -p "${vmcore_path}"
+    scp -r -i "${K_LOCK_SSH_ID_RSA}" root@${SERVERS}:${vmcore_path}/* ${vmcore_path}/
 }
 
 # @usage: prepare_ssh_connection <role> <ip_version>

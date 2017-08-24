@@ -280,6 +280,9 @@ config_nfs()
 
     open_firewall_port tcp "${sync_port}"
 
+    echo "/${client}" > "${K_PATH}"
+    echo "${K_EXPORT}" > "${K_NFS}"
+
     if [[ $(get_role) == "client" ]]; then  # copy keys
         ## Note:
         ## If client exits with error during config. server must be notified.
@@ -307,12 +310,10 @@ config_nfs()
         }
 
         append_config "${TESTARGS} ${server_addr}:${K_EXPORT}"
-        echo "${K_EXPORT}" > "${K_NFS}"
 
         # Config 'path' to client hostname
         # So client can fetch vmcore belong to itself.
         append_config "path /${client}"
-        echo "/${client}" > "${K_PATH}"
 
         # required only for RHEL6 or earlier
         [ "${K_DIST_VER}" == "6" ] && append_config "link_delay 60"
@@ -382,6 +383,7 @@ copy_nfs()
     cp -r "/mnt/tmp${vmcore_path}/"* "${export_path}${vmcore_path}" || return 1
 
     umount "/mnt/tmp"
+    rmdir "/mnt/tmp"
 }
 
 

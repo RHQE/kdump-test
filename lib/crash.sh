@@ -85,6 +85,7 @@ validate_vmcore_exists()
     vmcore_full_path=$(get_vmcore_path "${vmcore_format}")
 
     [ -z "${vmcore_full_path}" ] && log_error "- No vmcore file is found."
+    log_info "- Found vmcore file at ${vmcore_full_path}"
 
     # if vmcore format is not specified, check vmcore-dmesg as well.
     [[ -z ${vmcore_format} ]] && {

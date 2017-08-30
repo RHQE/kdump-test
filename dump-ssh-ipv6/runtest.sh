@@ -57,9 +57,24 @@ ssh_v6_sysrq_test()
         fi
     else
         rm -f "${C_REBOOT}"
+        copy_ssh
+        local retval=$?
+
         log_info "- Notifying server that crash is done at client."
         send_notify_signal "${SERVERS}" ${done_sync_port}
+
+        [ ${retval} -eq 0 ] || log_error "- Failed to copy vmcore"
+
+        validate_vmcore_exists flat
     fi
+
+    # Re-arrange a flattened vmcore.flat to vmcore
+    log_info "- Re-arranging vmcore.flat to vmcore"
+    core_path=$(get_vmcore_path flat)
+    core_dir=$(dirname "${core_path}")
+    makedumpfile -R "${core_dir}"/vmcore < "${core_path}" || {
+        log_error "- Failed to re-arrange ${core_path} to ${core_dir}/vmcore"
+    }
 }
 
 run_test ssh_v6_sysrq_test

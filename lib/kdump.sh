@@ -296,7 +296,9 @@ kdump_prepare()
     # enable kdump service: systemd
     /bin/systemctl enable kdump.service || /sbin/chkconfig kdump on || log_error "- Failed to enable kdump!"
     log_info "- Enabled kdump service."
-    kdump_restart
+
+    # make sure kdumpctl is operational
+    kdumpctl status 2>&1 || service kdump status 2>&1 || log_error "- Kdump is not running!"
 }
 
 

@@ -57,6 +57,7 @@ C_REBOOT="./C_REBOOT"
 K_PATH="${K_TMP_DIR}/KDUMP-PATH"
 K_RAW="${K_TMP_DIR}/KDUMP-RAW"
 K_NFS="${K_TMP_DIR}/KDUMP-NFS"  # file storing the nfs exports path
+K_RAID="${K_TMP_DIR}/KDUMP-RAID"
 
 K_HWINFO_FILE="${K_INF_DIR}/hwinfo.log"
 K_INITRAMFS_LIST="${K_INF_DIR}/initramfs.list"
@@ -64,6 +65,7 @@ K_INITRAMFS_LIST="${K_INF_DIR}/initramfs.list"
 K_PREFIX_FWD="${K_INF_DIR}/FIREWALLD"
 K_PREFIX_IPT="${K_INF_DIR}/IPTABLES"
 K_PREFIX_SSH="${K_INF_DIR}/SSHD_ENABLE"
+
 
 MD_DEVICE="${MD_DEVICE:-/dev/md0}"
 RAID_DEVICES="${RAID_DEVICES:-}"
@@ -593,13 +595,17 @@ config_sw_raid()
 
     for i in $RAID_DEVICES; do
         device_name[$count]=$(findmnt -kcno SOURCE "$i")
+        [ -z ${device_name[$count]} ] && {
+            log_error "- No device is found at $i."
+        }
+
         (( count++ ))
     done
 
     log_info "- The ready disk(s): ${device_name[*]}"
 
     # validate RAID_DEVICE and RAID_LEVEL
-    if [ "${RAID_LEVEL}" -eq 0 -o "${RAID_LEVEL}" -eq 1 ]; then
+    if [ "${RAID_LEVEL}" -eq 0 ] || [ "${RAID_LEVEL}" -eq 1 ]; then
         expect_count=2
     elif [ "${RAID_LEVEL}" -eq 5 ]; then
         expect_count=3
@@ -619,19 +625,21 @@ But only ${count} provided."
 
     log_info "- Creating raid${RAID_LEVEL} devices."
     release_md_device
+
+    local cmd="mdadm --create ${MD_DEVICE} --run --level raid${RAID_LEVEL}"
     case $RAID_LEVEL in
         0)
-            mdadm --create "${MD_DEVICE}" --run --level raid0 --raid-devices 2 "${device_name[0]}" "${device_name[1]}"
+            eval $cmd --raid-devices 2 "${device_name[0]}" "${device_name[1]}"
             [ $? != 0 ] && log_error "- Create raid0 failed."
             mdadm --detail "${MD_DEVICE}"
             ;;
         1)
-            mdadm --create "${MD_DEVICE}" --run --level raid1 --raid-devices 2 "${device_name[0]}" "${device_name[1]}"
+            eval $cmd --raid-devices 2 "${device_name[0]}" "${device_name[1]}"
             [ $? != 0 ] && log_error "- Create raid1 failed."
             mdadm --detail "${MD_DEVICE}"
             ;;
         5)
-            mdadm --create "${MD_DEVICE}" --run --level raid5 --raid-devices 3 "${device_name[0]}" "${device_name[1]}" "${device_name[2]}"
+            eval $cmd --raid-devices 3 "${device_name[0]}" "${device_name[1]}" "${device_name[2]}"
             [ $? != 0 ] && log_error "- Create raid5 failed."
             mdadm --detail "${MD_DEVICE}"
             ;;
@@ -640,10 +648,18 @@ But only ${count} provided."
             ;;
     esac
 
+    log_info "- Raid${RAID_LEVEL} is created at ${MD_DEVICE}"
+
     mkfs.ext4 "${MD_DEVICE}" > /dev/null
     mkdir -p "$MP"
-    mount "${MD_DEVICE}" "$MP" || log_error "- Failed to mount ${MD_DEVICE} $MP."
+    log_info "- Mounting ${MD_DEVICE} at ${MP}"
+    mount "${MD_DEVICE}" "${MP}" || log_error "- Failed to mount ${MD_DEVICE} $MP."
+
     save_md_config
+
+    # Save RAID device for test clean up
+    echo "${MD_DEVICE}" > "${K_RAID}"
+    echo "${RAID_DEVICES}" >> "${K_RAID}"
 }
 
 # @usage: release_md_device
@@ -652,14 +668,14 @@ But only ${count} provided."
 release_md_device()
 {
     mdadm --detail "${MD_DEVICE}" || {
-        log_info "- ${MD_DEVICE} is availiable!"
+        log_info "- ${MD_DEVICE} is available!"
         return
     }
 
     Log "- Releasing ${MD_DEVICE}"
     {
         mdadm --stop "${MD_DEVICE}"
-        Log " - ${MD_DEVICE} is availabile now!"
+        Log " - ${MD_DEVICE} is available now!"
     }
 }
 
@@ -669,7 +685,8 @@ release_md_device()
 save_md_config()
 {
     log_info "- Saving mdadm config to /etc/mdadm.conf"
-    mdadm -E -s -v >> /etc/mdadm.conf
+    mdadm --detail --brief "${MD_DEVICE}" >> /etc/mdadm.conf
+    #mdadm -E -s -v >> /etc/mdadm.conf
     report_file /etc/mdadm.conf
 
     log_info "- Adding ${MD_DEVICE} to /etc/fstab"

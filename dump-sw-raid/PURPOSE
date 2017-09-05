@@ -5,11 +5,18 @@ Parameters:
 $RAID_DEVICES specifies the mount points at which the devices will be
 used to create RAID.
 Default value:  RAID_DEVICES="/raid1 /raid2"
-Number of mount points provided depends on the RAID level.
+
+# of mount points required depends on the RAID level.
 RAID level 0 or 1 requires 2 devices
 RAID level 5 requries 3 devices.
 
-
 $RAID_LEVEL specifies the level of RAID used to build RAID.
-Valid level: 0, 1, 5.
-Default value: 0
+Valid level:    0, 1, 5.
+Default value:  0
+
+$MD_DEVICE specifies the name of the raid device will be created
+Default value:  /dev/md0
+
+$MP specifies where the raid will be mounted to
+Default value:  /mnt/raid
+

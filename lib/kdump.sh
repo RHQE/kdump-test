@@ -107,7 +107,7 @@ install_rpm()
 
 
 # @usage: install_rpm <pkg> <repo>
-# @description: install a rpm package from a repo
+# @description: install a rpm package from a repo. return 1 if failed.
 # @param1: pkg
 # @param2: repo
 install_rpm_from_repo()
@@ -121,8 +121,7 @@ install_rpm_from_repo()
     local pkg=$1
     local repo=$2
 
-    rpm -q "$pkg" || yum install -y --enablerepo="$repo" "$pkg" || \
-        log_error "- Install package $pkg from $repo failed!"
+    rpm -q "$pkg" || yum install -y --enablerepo="$repo" "$pkg" || return 1
 
     log_info "- Installed/upgraded $pkg from $repo successfully"
 }
@@ -187,15 +186,29 @@ crash_prepare()
     # the version of current kernel.
     # if not, exit with error as it cannot be used for crash analysis.
     if [[ "${K_DIST_NAME}" == "fc" ]]; then
-        ret_value=$(yum list --enablerepo=updates-debuginfo kernel-debuginfo \
-            | grep kernel-debuginfo \
-            | awk '{print $2}'
-        )
+        # install kernel-debuginfo
+        log_info "- Installing kernel-debuginfo from https://kojipkgs.fedoraproject.org/packages/kernel/"
 
-        [ "${ret_value}.${K_ARCH}" ==  "$(uname -r)" ] || \
-            log_error "- Cannot find kernel-debuginfo.$(uname -r) in repo updates-debuginfo."
+        local kernel_version=$(uname -r)
+        kernel_version=$(echo "${kernel_version%.*}" | sed 's/-/\//')
 
-        install_rpm_from_repo kernel-debuginfo updates-debuginfo
+        local url=https://kojipkgs.fedoraproject.org/packages/kernel/${kernel_version}/${K_ARCH}/
+
+        files=$(curl -s "${url}" \
+            | grep kernel-debuginfo- | grep -o "href=\".*\"" | awk -F'"' '{print $2}')
+
+        [ -z "$files" ] && log_error "- Failed to find kernel-debuginfo-* packages from ${url}"
+        files=($files)
+
+        [ "${#files[@]}" -eq 2 ] || {
+            log_error "- Expect kernel-debuginfo and kernel-debuginfo-common packages. But it returned ${files[*]}"
+        }
+
+        for f in "${files[@]}"; do
+            rpm -Uvh --nodeps --force "${url}$f" || log_error "- Failed to install ${url}$f"
+        done
+
+        # install crash
         install_rpm crash
     else
         install_rpm kernel-debuginfo crash

@@ -226,13 +226,11 @@ reset_efiboot()
     which efibootmgr && {
         local boot_current
         boot_current=$(efibootmgr | grep -i BootCurrent | awk  '{print $2}')
-        if [ -n ${boot_current} ]; then
+        if [ -n "${boot_current}" ]; then
             log_info "- Setting NextBoot in efibootmgr to ${boot_current}"
-            efibootmgr -n ${boot_current} || {
-                log_error "- Command 'efibootmgr -n ${boot_current}' failed!"
-            }
+            efibootmgr -n "${boot_current}"
         else
-            log_info "- Not efi boot."
+            log_info "- Not EFI boot."
         fi
     }
 }

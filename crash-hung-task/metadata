@@ -1,0 +1,9 @@
+[General]
+name=/kdump-test/crash-hung-task
+owner="Qiao Zhao"
+description="kdump-test for crash-hung-task"
+
+[restraint]
+entry_point=./runtest.sh
+repoRequires=lib
+use_pty=true

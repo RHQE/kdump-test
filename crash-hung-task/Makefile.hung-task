@@ -1,0 +1,20 @@
+obj-m = hung-task.o
+KVERSION = $(shell uname -r)
+DRIVER = run-hung-task
+
+all: $(DRIVER)
+	make -C /lib/modules/$(KVERSION)/build M=$(PWD) modules
+
+$(DRIVER): $(DRIVER).c
+	cc -o $@ $@.c
+
+clean:
+	make -C /lib/modules/$(KVERSION)/build M=$(PWD) clean
+	rm -f $(DRIVER) $(DRIVER).o
+
+install:
+	[[ -d /debug ]] || mkdir /debug
+	df /debug | grep -q debugfs; \
+	[[ $$? -ne 0 ]] && mount -t debugfs debugfs /debug
+	insmod hung-task.ko
+	echo 20 > /proc/sys/kernel/hung_task_timeout_secs
